@@ -1,0 +1,4 @@
+include README.rst LICENSE.txt
+
+global-exclude *.pyc *.pyo
+global-exclude .git

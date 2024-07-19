@@ -1,0 +1,12 @@
+venv
+__pycache__
+*.egg-info/
+*.sw[pon]
+*.swm
+dist/
+build
+.eggs
+.tox
+.coverage
+auth.yml
+.gitlab-ci-local/
