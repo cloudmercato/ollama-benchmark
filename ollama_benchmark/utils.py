@@ -2,10 +2,21 @@ import os
 import json
 from base64 import b64encode
 import urllib.request
+import statistics
+
+from ollama_benchmark import __version__
 from ollama_benchmark import settings
 from ollama_benchmark import questions
 
 QUESTION_URL = 'https://raw.githubusercontent.com/lm-sys/FastChat/main/fastchat/llm_judge/data/mt_bench/question.jsonl'
+
+
+def print_main():
+    data = {
+        'version': __version__,
+    }
+    for key, value in data.items():
+        print(f"{key}: {value}")
 
 
 class DataManager:
@@ -77,3 +88,17 @@ class DataManager:
 
 
 data_manager = DataManager()
+
+
+def mean(values):
+    if not values:
+        return
+    return statistics.mean(values)
+
+
+def stdev(values):
+    if not values:
+        return
+    if len(values) == 1:
+        return .0
+    return statistics.stdev(values)
