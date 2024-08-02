@@ -92,6 +92,8 @@ def main(parser, args):
         'top_p': args.top_p,
         'min_p': args.min_p,
     }
+    if args.pull:
+        tester.pull_model(args.model)
     if args.prewarm:
         tester.prewarm(args.model)
 

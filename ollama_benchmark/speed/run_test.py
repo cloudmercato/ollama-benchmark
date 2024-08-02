@@ -8,6 +8,11 @@ class Tester:
     def __init__(self, client):
         self.client = client
 
+    def pull_model(self, model):
+        logger.info("Pulling model %s", model)
+        self.client.client.pull(model)
+        logger.debug("Pulled model %s", model)
+
     def prewarm(self, model):
         prompt = "Hello world"
         messages = [{

@@ -95,6 +95,10 @@ def main():
         help='Alternative to the top_p, and aims to ensure a balance of quality and variety. (Default: 0.0)'
     )
     speed_parser.add_argument(
+        '--do-not-pull', action="store_false", dest="pull",
+        help='Do not pull the model',
+    )
+    speed_parser.add_argument(
         '--do-not-prewarm', action="store_false", dest="prewarm",
         help='Run a prewarm request to load model into GPU',
     )
