@@ -103,6 +103,19 @@ def main():
         help='Run a prewarm request to load model into GPU',
     )
 
+    speed_parser.add_argument(
+        '--disable-monitoring', action="store_false", dest="monitoring",
+    )
+    speed_parser.add_argument(
+        '--monitoring-interval', type=int, default=5,
+    )
+    speed_parser.add_argument(
+        '--monitoring-probers', action='append'
+    )
+    speed_parser.add_argument(
+        '--monitoring-output', default="/dev/stderr"
+    )
+
     speed_parser.add_argument('--questions', default=['all'], nargs='*')
     speed_parser.add_argument('--max-workers', default=1, type=int)
     speed_parser.add_argument('--max_turns', default=None, type=int, required=False)

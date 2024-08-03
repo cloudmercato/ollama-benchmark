@@ -1,4 +1,5 @@
 import os
+import datetime
 import json
 from base64 import b64encode
 import urllib.request
@@ -102,3 +103,9 @@ def stdev(values):
     if len(values) == 1:
         return .0
     return statistics.stdev(values)
+
+
+class JSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (datetime.date, datetime.datetime)):
+            return obj.isoformat()

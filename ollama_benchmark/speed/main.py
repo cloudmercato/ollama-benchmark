@@ -1,10 +1,16 @@
 import time
 import json
 import logging
+import platform
 from concurrent.futures import ThreadPoolExecutor
 from collections import defaultdict
 
-from ollama_benchmark import settings
+try:
+    from probes import ProbeManager
+    has_probes = True
+except ImportError:
+    has_probes = False
+
 from ollama_benchmark import utils
 from ollama_benchmark.client import OllamaClient
 from ollama_benchmark.speed import run_test
@@ -97,6 +103,27 @@ def main(parser, args):
     if args.prewarm:
         tester.prewarm(args.model)
 
+    monitoring_enabled = args.monitoring and has_probes
+    if monitoring_enabled:
+        probers = args.monitoring_probers
+        if not probers:
+            probers = [
+                'probes.probers.system.CpuProber',
+                'probes.probers.system.MemoryProber',
+            ]
+            sys_plat = platform.system()
+            if sys_plat == 'Darwin':
+                probers += ['probes.probers.macos.MacosProber']
+        try:
+            probe_manager = ProbeManager(
+                interval=args.monitoring_interval,
+                probers=probers,
+            )
+            probe_manager.start()
+        except Exception as err:
+            logger.warning('Error with monitoring: %s', err)
+            monitoring_enabled = False
+
     with ThreadPoolExecutor(**pool_kwargs) as executor:
         t0 = time.time()
         for question_id in questions:
@@ -114,4 +141,13 @@ def main(parser, args):
             for future in futures
         ]
         real_duration = (time.time() - t0) * 1000
+
+    if monitoring_enabled:
+        probe_manager.stop()
+        with open(args.monitoring_output, 'w') as fd:
+            fd.write(json.dumps(
+                probe_manager.get_results(),
+                cls=utils.JSONEncoder,
+            ))
+
     print_results(args, questions, results, real_duration, options)
