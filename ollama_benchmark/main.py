@@ -18,6 +18,15 @@ def print_questions():
         print(row)
 
 
+def pull_models(args):
+    client = OllamaClient(
+        host=args.host,
+        timeout=args.timeout,
+    )
+    for model in args.models:
+        client.client.pull(model)
+
+
 def generate(prompt=None):
     prompt = prompt or input('> ')
     client = OllamaClient(
@@ -36,6 +45,9 @@ def main():
     subparsers = parser.add_subparsers(dest="action")
 
     question_parser = subparsers.add_parser("questions", help="")
+
+    pull_models_parser = subparsers.add_parser("pull-models", help="")
+    pull_models_parser.add_argument('models', action='append')
 
     speed_parser = subparsers.add_parser("speed", help="")
     speed_parser.add_argument('--model', default=settings.MODEL)
@@ -129,6 +141,8 @@ def main():
         speed(speed_parser, args)
     elif args.action == 'questions':
         print_questions()
+    elif args.action == 'pull-models':
+        pull_models(args)
     else:
         parser.print_help()
 
