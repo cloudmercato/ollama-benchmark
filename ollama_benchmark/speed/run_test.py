@@ -1,40 +1,45 @@
-import logging
 from ollama_benchmark import utils
+from ollama_benchmark.tester import BaseTester
 
-logger = logging.getLogger("ollama_benchmark")
 
+class Tester(BaseTester):
+    def __init__(
+        self,
+        questions,
+        max_turns=1,
+        *args, **kwargs
+    ):
+        super().__init__(*args, **kwargs)
+        self.questions = questions
+        self.max_turns = max_turns
 
-class Tester:
-    def __init__(self, client):
-        self.client = client
+    def get_tasks(self):
+        questions = self.questions
+        if 'all' in questions:
+            questions = [
+                q['question_id']
+                for q in utils.data_manager.list_questions()
+            ]
+        return questions
 
-    def pull_model(self, model):
-        logger.info("Pulling model %s", model)
-        self.client.client.pull(model)
-        logger.debug("Pulled model %s", model)
+    def get_tasks_kwargs(self):
+        return [
+            (
+                task,
+                {'question_id': task},
+            )
+            for task in self.get_tasks()
+        ]
 
-    def prewarm(self, model):
-        prompt = "Hello world"
-        messages = [{
-            "role": "user",
-            "content": prompt,
-        }]
-        logger.debug('Prewarm request > %s', prompt)
-        response = self.client.client.chat(
-            model=model,
-            messages=messages,
-        )
-        logger.info('< %s', response['message']['content'])
-
-    def run(self, question_id, model, max_turns=1, options=None):
+    def run(self, question_id):
         data_manager = utils.DataManager()
         question = data_manager.get_question(question_id)
 
         responses = []
         messages = []
-        for turn_id, prompt in enumerate(question['turns'][:max_turns]):
-            logger.debug('turn #%s', turn_id)
-            logger.info('> %s', prompt)
+        for turn_id, prompt in enumerate(question['turns'][:self.max_turns]):
+            self.logger.debug('turn #%s', turn_id)
+            self.logger.info('> %s', prompt)
             message = {
                 "role": "user",
                 "content": prompt,
@@ -43,11 +48,11 @@ class Tester:
                 message['images'] = data_manager.get_question_b64_images(question_id)
             messages.append(message)
             response = self.client.client.chat(
-                model=model,
+                model=self.model,
                 messages=messages,
-                options=options,
+                options=self.ollama_options,
             )
-            logger.info('< %s', response['message']['content'])
+            self.logger.info('< %s', response['message']['content'])
             messages.append({
                 "role": "assistant",
                 "content": response['message']['content'],

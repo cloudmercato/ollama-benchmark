@@ -3,63 +3,69 @@ import logging
 from collections import defaultdict
 
 from ollama_benchmark import utils
-from ollama_benchmark.speed import run_test
+from ollama_benchmark.embedding.tester import Tester
 
 logger = logging.getLogger("ollama_benchmark")
 
 
 def make_args(parser):
     utils.add_test_argument(parser)
-    parser.add_argument('--questions', default=['all'], nargs='*')
+    parser.add_argument('--sample-sizes', default=[], type=int, nargs='*')
+    parser.add_argument('--sample-langs', default=[], nargs='*')
     parser.add_argument('--max-workers', default=1, type=int)
-    parser.add_argument('--max_turns', default=None, type=int, required=False)
+    parser.add_argument('--num-tasks', default=1, type=int)
+    parser.add_argument('--num-inputs', default=1, type=int)
     args, _ = parser.parse_known_args()
     return args
 
 
-def print_results(args, questions, results, real_duration, options):
+def print_results(args, results, options):
     utils.print_main()
 
     overall_results = {
         'model': args.model,
-        'question_ids': json.dumps(questions),
+        'sample_sizes': json.dumps(args.sample_sizes),
+        'sample_langs': json.dumps(args.sample_langs),
         'max_workers': args.max_workers,
-        'max_turns': args.max_turns,
     }
     for key, value in overall_results.items():
         print(f"{key}: {value}")
     for key, value in options.items():
         print(f"{key}: {value}")
-
-    totals_keys = (
-        'eval_duration_mean', 'prompt_eval_duration_mean',
-        'eval_count_mean', 'prompt_eval_count_mean',
-        'eval_rate_mean', 'prompt_eval_rate_mean',
-        'total_durations',
-    )
-    totals = defaultdict(list)
-    skipped = ('question', 'question_id', 'responses')
-    for i, result in enumerate(results):
-        for key, value in result.items():
-            if key in skipped:
-                continue
-            print(f"{i};{result['question_id']};{key}: {value}")
-            if key in totals_keys:
-                totals[key].append(value)
-
-    skipped = ('total_durations', )
-    for key, values in totals.items():
-        if key in skipped:
-            continue
-        mean = utils.mean(values)
-        stdev = utils.stdev(values)
-        print(f"{key}: {mean}")
-        print(f"{key.replace('mean', 'stdev')}: {stdev}")
-
-    total_durations = [j for i in totals['total_durations'] for j in i]
-    total_duration = sum(total_durations)
+    # Duration
+    values = [r['duration'] for r in results['results']]
+    duration = {
+        'min': min(values),
+        'max': max(values),
+        'mean': utils.mean(values),
+        'stdev': utils.stdev(values),
+        'perc95': utils.perc95(values),
+    }
+    for key, value in duration.items():
+        print(f"duration_{key}: {value}")
+    total_duration = sum(values)
     print(f"total_duration: {total_duration}")
-    print(f"real_duration: {real_duration}")
+    print(f"real_duration: {results['real_duration']}")
+    # Rate
+    values = [(1/r['duration']) for r in results['results']]
+    rates = {
+        'min': min(values),
+        'max': max(values),
+        'mean': utils.mean(values),
+        'stdev': utils.stdev(values),
+        'perc95': utils.perc95(values),
+    }
+    for key, value in rates.items():
+        print(f"rate_{key}: {value}")
+    # Errors
+    values = [r['errors'] for r in results['results']]
+    print(f"errors: {sum(values)}")
+    errors = {
+        'mean': utils.mean(values),
+        'stdev': utils.stdev(values),
+    }
+    for key, value in errors.items():
+        print(f"errors_per_worker_{key}: {value}")
 
 
 def main(parser, main_args):
@@ -81,7 +87,7 @@ def main(parser, main_args):
         'top_p': args.top_p,
         'min_p': args.min_p,
     }
-    tester = run_test.Tester(
+    tester = Tester(
         host=main_args.host,
         timeout=main_args.timeout,
         model=args.model,
@@ -89,15 +95,16 @@ def main(parser, main_args):
         pull=args.pull,
         prewarm=args.prewarm,
         max_workers=args.max_workers,
-        questions=args.questions,
+        langs=args.sample_langs,
+        sizes=args.sample_sizes,
+        num_tasks=args.num_tasks,
+        num_inputs=args.num_inputs,
     )
     run_results = tester.run_suite()
 
     print_results(
         args,
-        tester.get_tasks(),
-        run_results['results'],
-        run_results['real_duration'],
+        run_results,
         ollama_options,
     )
 
