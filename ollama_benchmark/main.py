@@ -1,4 +1,5 @@
 import argparse
+
 from ollama_benchmark import settings
 from ollama_benchmark import utils
 from ollama_benchmark.loggers import logger

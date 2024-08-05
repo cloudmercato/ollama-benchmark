@@ -1,28 +1,62 @@
 import time
+import logging
 from ollama_benchmark import utils
 from ollama_benchmark import client
 
+logger = logging.getLogger('ollama_benchmark')
+
 
 def make_args(subparsers):
-    parser = subparsers.add_parser("chat", help="Evaluate performance while chatting")
+    parser = subparsers.add_parser(
+        "chat",
+        help="Evaluate performance while chatting"
+    )
+    parser.add_argument('--unload-after', action="store_true")
     utils.add_ollama_config_arguments(parser)
     utils.add_tester_arguments(parser)
 
+
+def print_help(func_name):
+    print()
+    print('Console help:')
+    for func_name in FUNCS:
+        print(f"\\{func_name}")
+        aliases = []
+        for alias in FUNCS_ALIASES:
+            if FUNCS_ALIASES[alias] == func_name:
+                aliases.append(alias)
+        print('  \\' + ' \\'.join(aliases))
+
+    print()
+
+
 FUNCS = {
     'quit': lambda p: exit(0),
-    'q': lambda p: exit(0),
+    'help': print_help,
 }
-FUNCS.update({
-    'q': FUNCS['q'],
-    'exit': FUNCS['q'],
-    'e': FUNCS['q'],
-})
+FUNCS_ALIASES = {
+    'q': 'quit',
+    'exit': 'quit',
+    'e': 'quit',
+    'h': 'help',
+    '?': 'help',
+}
+
 
 def main(args):
+    model = args.model
+
     cl = client.OllamaClient(
         host=args.host,
         timeout=args.timeout,
     )
+
+    if args.prewarm:
+        logger.info('Loading model %s', args.model)
+        t0 = time.time()
+        cl.load(args.model)
+        duration = time.time() - t0
+        print('load_model_duration: ', duration)
 
     ollama_options = {
         'mirostat': args.mirostat,
@@ -49,6 +83,8 @@ def main(args):
 
         if prompt.startswith('\\'):
             func_name = prompt[1:]
+            if func_name in FUNCS_ALIASES:
+                func_name = FUNCS_ALIASES[func_name]
             if func_name in FUNCS:
                 FUNCS[func_name](func_name)
             return
@@ -65,17 +101,30 @@ def main(args):
             options=ollama_options,
         )
         print('<', response['message']['content'])
-        print('time: ', time.time() - t0)
+        print('total_duration: ', response['total_duration']/10**9)
+        print('load_duration: ', response['load_duration']/10**9)
+        print('prompt_eval_count: ', response['prompt_eval_count'])
+        print('prompt_eval_duration: ', response['prompt_eval_duration']/10**9)
+        print('eval_count: ', response['eval_count'])
+        print('eval_duration: ', response['eval_duration']/10**9)
+        print('request_duration: ', time.time() - t0)
         messages.append({
             "role": "assistant",
             "content": response['message']['content'],
         })
 
+    t0 = time.time()
     messages = []
-    while 1:
-        try:
-            loop(messages)
-        except KeyboardInterrupt:
-            break
-        except client.OllamaConnectionError as err:
-            print(err, '\n')
+    try:
+        while 1:
+            try:
+                loop(messages)
+            except client.OllamaConnectionError as err:
+                print(err, '\n')
+    except KeyboardInterrupt:
+        print('')
+    duration = time.time() - t0
+    print('whole_duration: ', duration)
+
+    if args.unload_after:
+        cl.unload(args.model)
