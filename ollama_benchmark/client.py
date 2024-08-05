@@ -7,6 +7,21 @@ class ClientError(Exception):
     pass
 
 
+class OllamaConnectionError(ClientError):
+    pass
+
+
+def exception_checker(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except httpx.ConnectError as e:
+            raise OllamaConnectionError(e)
+        except Exception as e:
+            raise ClientError(e)
+    return wrapper
+
+
 class OllamaClient:
     err_class = ClientError
 
@@ -30,27 +45,28 @@ class OllamaClient:
             )
         return self._client
 
+    @exception_checker
     def get_version(self):
         response = self.client._request('GET', '/api/version')
         if response.status_code >= 300:
             raise ClientError(response.status_code)
         return response.json()['version']
 
+    @exception_checker
     def list_running_models(self):
         response = self.client._request('GET', '/api/ps')
         if response.status_code >= 300:
             raise ClientError(response.status_code)
         return response.json()['models']
 
+    @exception_checker
     def load(self, model, keep_alive=None):
-        try:
-            self.client.generate(
-                model=model,
-                keep_alive=keep_alive,
-            )
-        except httpx.ConnectError as err:
-            raise ClientError(err)
+        self.client.generate(
+            model=model,
+            keep_alive=keep_alive,
+        )
 
+    @exception_checker
     def unload(self, model):
         self.client.generate(
             model=model,
@@ -62,6 +78,7 @@ class OllamaClient:
         for model in models:
             self.unload(model['name'])
 
+    @exception_checker
     def embed(self, model, input_, options):
         response = self.client._request('POST', '/api/embed', json={
             'model': model,
@@ -71,3 +88,7 @@ class OllamaClient:
         if response.status_code >= 300:
             raise ClientError(response.status_code)
         return response.json()
+
+    @exception_checker
+    def chat(self, *args, **kwargs):
+        return self.client.chat(*args, **kwargs)

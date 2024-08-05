@@ -5,6 +5,7 @@ from ollama_benchmark.loggers import logger
 from ollama_benchmark.client import OllamaClient
 from ollama_benchmark.speed import main as speed
 from ollama_benchmark.load import main as load
+from ollama_benchmark import chat
 from ollama_benchmark.embedding import main as embedding
 
 
@@ -57,6 +58,7 @@ def main():
     speed.make_parser(subparsers)
     embedding.make_parser(subparsers)
     load.make_args(subparsers)
+    chat.make_args(subparsers)
     judge_parser = subparsers.add_parser("judge", help="Evaluate chat quality")
     subparsers.add_parser("unload", help="Unload all models from memory")
     subparsers.add_parser("questions", help="")
@@ -75,6 +77,8 @@ def main():
         embedding.main(args)
     elif args.action == 'load':
         load.main(args)
+    elif args.action == 'chat':
+        chat.main(args)
     elif args.action == 'unload':
         unload_models(args)
     elif args.action == 'judge':
