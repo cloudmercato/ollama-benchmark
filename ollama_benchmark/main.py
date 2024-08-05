@@ -3,8 +3,9 @@ from ollama_benchmark import settings
 from ollama_benchmark import utils
 from ollama_benchmark.loggers import logger
 from ollama_benchmark.client import OllamaClient
-from ollama_benchmark.speed.main import main as speed
-from ollama_benchmark.embedding.main import main as embedding
+from ollama_benchmark.speed import main as speed
+from ollama_benchmark.load import main as load
+from ollama_benchmark.embedding import main as embedding
 
 
 def print_questions():
@@ -28,6 +29,14 @@ def pull_models(args):
         client.client.pull(model)
 
 
+def unload_models(args):
+    client = OllamaClient(
+        host=args.host,
+        timeout=args.timeout,
+    )
+    client.unload_all()
+
+
 def generate(prompt=None):
     prompt = prompt or input('> ')
     client = OllamaClient(
@@ -45,22 +54,31 @@ def main():
 
     subparsers = parser.add_subparsers(dest="action")
 
-    speed_parser = subparsers.add_parser("speed", help="")
-    embedding_parser = subparsers.add_parser("embedding", help="")
-    question_parser = subparsers.add_parser("questions", help="")
+    speed.make_parser(subparsers)
+    embedding.make_parser(subparsers)
+    load.make_args(subparsers)
+    judge_parser = subparsers.add_parser("judge", help="Evaluate chat quality")
+    subparsers.add_parser("unload", help="Unload all models from memory")
+    subparsers.add_parser("questions", help="")
 
     pull_models_parser = subparsers.add_parser("pull-models", help="")
     pull_models_parser.add_argument('models', action='append')
 
-    args, _ = parser.parse_known_args()
+    args = parser.parse_args()
 
     logger.setLevel(40-(10+args.verbosity*10))
     logger.info('Log level: %s', logger.level)
 
     if args.action == 'speed':
-        speed(speed_parser, args)
+        speed.main(args)
     elif args.action == 'embedding':
-        embedding(embedding_parser, args)
+        embedding.main(args)
+    elif args.action == 'load':
+        load.main(args)
+    elif args.action == 'unload':
+        unload_models(args)
+    elif args.action == 'judge':
+        print("Not implemented yet")
     elif args.action == 'questions':
         print_questions()
     elif args.action == 'pull-models':

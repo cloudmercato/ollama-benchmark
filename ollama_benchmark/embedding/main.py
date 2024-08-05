@@ -8,15 +8,15 @@ from ollama_benchmark.embedding.tester import Tester
 logger = logging.getLogger("ollama_benchmark")
 
 
-def make_args(parser):
-    utils.add_test_argument(parser)
+def make_parser(subparsers):
+    parser = subparsers.add_parser("embedding", help="Evaluate embedding peformance")
     parser.add_argument('--sample-sizes', default=[], type=int, nargs='*')
     parser.add_argument('--sample-langs', default=[], nargs='*')
     parser.add_argument('--max-workers', default=1, type=int)
     parser.add_argument('--num-tasks', default=1, type=int)
     parser.add_argument('--num-inputs', default=1, type=int)
-    args, _ = parser.parse_known_args()
-    return args
+    utils.add_tester_arguments(parser)
+    utils.add_ollama_config_arguments(parser)
 
 
 def print_results(args, results, options):
@@ -68,9 +68,7 @@ def print_results(args, results, options):
         print(f"errors_per_worker_{key}: {value}")
 
 
-def main(parser, main_args):
-    args = make_args(parser)
-
+def main(args):
     ollama_options = {
         'mirostat': args.mirostat,
         'mirostat_eta': args.mirostat_eta,
@@ -88,8 +86,8 @@ def main(parser, main_args):
         'min_p': args.min_p,
     }
     tester = Tester(
-        host=main_args.host,
-        timeout=main_args.timeout,
+        host=args.host,
+        timeout=args.timeout,
         model=args.model,
         ollama_options=ollama_options,
         pull=args.pull,

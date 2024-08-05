@@ -1,4 +1,3 @@
-import json
 import time
 import random
 from ollama_benchmark import utils

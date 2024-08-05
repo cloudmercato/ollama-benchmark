@@ -122,7 +122,35 @@ class JSONEncoder(json.JSONEncoder):
             return obj.isoformat()
 
 
-def add_test_argument(parser):
+def add_tester_arguments(parser):
+    parser.add_argument(
+        '--do-not-pull', action="store_false", dest="pull",
+        help='Do not pull the model',
+    )
+    parser.add_argument(
+        '--do-not-prewarm', action="store_false", dest="prewarm",
+        help='Run a prewarm request to load model into GPU',
+    )
+    return parser
+
+
+def add_monitoring_arguments(parser):
+    parser.add_argument(
+        '--disable-monitoring', action="store_false", dest="monitoring",
+    )
+    parser.add_argument(
+        '--monitoring-interval', type=int, default=5,
+    )
+    parser.add_argument(
+        '--monitoring-probers', action='append'
+    )
+    parser.add_argument(
+        '--monitoring-output', default="/dev/stderr"
+    )
+    return parser
+
+
+def add_ollama_config_arguments(parser):
     parser.add_argument('--model', default=settings.MODEL)
     parser.add_argument(
         '--mirostat', type=int, default=0, choices=[0, 1, 2],
@@ -179,25 +207,11 @@ def add_test_argument(parser):
         '--min_p', type=float, default=0.0,
         help='Alternative to the top_p, and aims to ensure a balance of quality and variety. (Default: 0.0)'
     )
-    parser.add_argument(
-        '--do-not-pull', action="store_false", dest="pull",
-        help='Do not pull the model',
-    )
-    parser.add_argument(
-        '--do-not-prewarm', action="store_false", dest="prewarm",
-        help='Run a prewarm request to load model into GPU',
-    )
+    return parser
 
-    parser.add_argument(
-        '--disable-monitoring', action="store_false", dest="monitoring",
-    )
-    parser.add_argument(
-        '--monitoring-interval', type=int, default=5,
-    )
-    parser.add_argument(
-        '--monitoring-probers', action='append'
-    )
-    parser.add_argument(
-        '--monitoring-output', default="/dev/stderr"
-    )
+
+def add_test_argument(parser):
+    parser = add_tester_arguments(parser)
+    parser = add_monitoring_arguments(parser)
+    parser = add_ollama_config_arguments(parser)
     return parser

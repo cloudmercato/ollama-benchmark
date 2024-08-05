@@ -8,13 +8,14 @@ from ollama_benchmark.speed import run_test
 logger = logging.getLogger("ollama_benchmark")
 
 
-def make_args(parser):
-    utils.add_test_argument(parser)
-    parser.add_argument('--questions', default=['all'], nargs='*')
+def make_parser(subparsers):
+    parser = subparsers.add_parser("speed", help="Evaluate chat speed performance")
+    parser.add_argument('--questions', default=['81'], nargs='*')
     parser.add_argument('--max-workers', default=1, type=int)
     parser.add_argument('--max_turns', default=None, type=int, required=False)
-    args, _ = parser.parse_known_args()
-    return args
+    utils.add_tester_arguments(parser)
+    utils.add_ollama_config_arguments(parser)
+    utils.add_monitoring_arguments(parser)
 
 
 def print_results(args, questions, results, real_duration, options):
@@ -62,9 +63,7 @@ def print_results(args, questions, results, real_duration, options):
     print(f"real_duration: {real_duration}")
 
 
-def main(parser, main_args):
-    args = make_args(parser)
-
+def main(args):
     ollama_options = {
         'mirostat': args.mirostat,
         'mirostat_eta': args.mirostat_eta,
@@ -82,8 +81,8 @@ def main(parser, main_args):
         'min_p': args.min_p,
     }
     tester = run_test.Tester(
-        host=main_args.host,
-        timeout=main_args.timeout,
+        host=args.host,
+        timeout=args.timeout,
         model=args.model,
         ollama_options=ollama_options,
         pull=args.pull,

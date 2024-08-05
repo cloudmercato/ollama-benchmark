@@ -119,7 +119,7 @@ class BaseTester:
                 future.result()
                 for future in futures
             ]
-            real_duration = (time.time() - t0) * 1000
+            real_duration = (time.time() - t0)
 
         run_results = {
             'results': results,
