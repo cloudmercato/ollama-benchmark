@@ -61,8 +61,10 @@ class Tester(BaseTester):
 
         total_durations = [(r['total_duration']/10**6) for r in responses]
         load_durations = [(r['load_duration']/10**6) for r in responses]
-        prompt_eval_counts = [r['prompt_eval_count'] for r in responses]
-        prompt_eval_durations = [(r['prompt_eval_duration']/10**6) for r in responses]
+        prompt_eval_counts = [r['prompt_eval_count'] for r in responses
+                              if 'prompt_eval_count' in r]
+        prompt_eval_durations = [(r['prompt_eval_duration']/10**6) for r in responses
+                                 if 'prompt_eval_duration' in r]
         prompt_eval_rates = [
             (c/(d/1000)) for c, d in zip(prompt_eval_counts, prompt_eval_durations)
         ]
@@ -81,43 +83,43 @@ class Tester(BaseTester):
 
             'total_duration_mean': utils.mean(total_durations),
             'total_duration_stdev': utils.stdev(total_durations),
-            'total_duration_min': min(total_durations),
-            'total_duration_max': max(total_durations),
+            'total_duration_min': utils.min(total_durations),
+            'total_duration_max': utils.max(total_durations),
 
             'load_duration_mean': utils.mean(load_durations),
             'load_duration_stdev': utils.stdev(load_durations),
-            'load_duration_min': min(load_durations),
-            'load_duration_max': max(load_durations),
+            'load_duration_min': utils.min(load_durations),
+            'load_duration_max': utils.max(load_durations),
 
             'prompt_eval_duration_mean': utils.mean(prompt_eval_durations),
             'prompt_eval_duration_stdev': utils.stdev(prompt_eval_durations),
-            'prompt_eval_duration_min': min(prompt_eval_durations),
-            'prompt_eval_duration_max': max(prompt_eval_durations),
+            'prompt_eval_duration_min': utils.min(prompt_eval_durations),
+            'prompt_eval_duration_max': utils.max(prompt_eval_durations),
 
             'prompt_eval_rate_mean': utils.mean(prompt_eval_rates),
             'prompt_eval_rate_stdev': utils.stdev(prompt_eval_rates),
-            'prompt_eval_rate_min': min(prompt_eval_rates),
-            'prompt_eval_rate_max': max(prompt_eval_rates),
+            'prompt_eval_rate_min': utils.min(prompt_eval_rates),
+            'prompt_eval_rate_max': utils.max(prompt_eval_rates),
 
             'eval_count_mean': utils.mean(eval_counts),
             'eval_count_stdev': utils.stdev(eval_counts),
-            'eval_count_min': min(eval_counts),
-            'eval_count_max': max(eval_counts),
+            'eval_count_min': utils.min(eval_counts),
+            'eval_count_max': utils.max(eval_counts),
 
             'prompt_eval_count_mean': utils.mean(prompt_eval_counts),
             'prompt_eval_count_stdev': utils.stdev(prompt_eval_counts),
-            'prompt_eval_count_min': min(prompt_eval_counts),
-            'prompt_eval_count_max': max(prompt_eval_counts),
+            'prompt_eval_count_min': utils.min(prompt_eval_counts),
+            'prompt_eval_count_max': utils.max(prompt_eval_counts),
 
             'eval_duration_mean': utils.mean(eval_durations),
             'eval_duration_stdev': utils.stdev(eval_durations),
-            'eval_duration_min': min(eval_durations),
-            'eval_duration_max': max(eval_durations),
+            'eval_duration_min': utils.min(eval_durations),
+            'eval_duration_max': utils.max(eval_durations),
 
             'eval_rate_mean': utils.mean(eval_rates),
             'eval_rate_stdev': utils.stdev(eval_rates),
-            'eval_rate_min': min(eval_rates),
-            'eval_rate_max': max(eval_rates),
+            'eval_rate_min': utils.min(eval_rates),
+            'eval_rate_max': utils.max(eval_rates),
         }
         if len(responses) > 1:
             result.update({

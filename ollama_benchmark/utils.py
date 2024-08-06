@@ -1,6 +1,7 @@
 import os
 import datetime
 import json
+import builtins
 from base64 import b64encode
 import urllib.request
 import math
@@ -104,6 +105,18 @@ def stdev(values):
     if len(values) == 1:
         return .0
     return statistics.stdev(values)
+
+
+def min(values):
+    if not values:
+        return
+    return builtins.min(values)
+
+
+def max(values):
+    if not values:
+        return
+    return builtins.max(values)
 
 
 def perc95(values):

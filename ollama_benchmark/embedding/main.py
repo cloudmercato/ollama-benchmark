@@ -35,8 +35,8 @@ def print_results(args, results, options):
     # Duration
     values = [r['duration'] for r in results['results']]
     duration = {
-        'min': min(values),
-        'max': max(values),
+        'min': utils.min(values),
+        'max': utils.max(values),
         'mean': utils.mean(values),
         'stdev': utils.stdev(values),
         'perc95': utils.perc95(values),
@@ -49,8 +49,8 @@ def print_results(args, results, options):
     # Rate
     values = [(1/r['duration']) for r in results['results']]
     rates = {
-        'min': min(values),
-        'max': max(values),
+        'min': utils.min(values),
+        'max': utils.max(values),
         'mean': utils.mean(values),
         'stdev': utils.stdev(values),
         'perc95': utils.perc95(values),
