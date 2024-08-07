@@ -39,14 +39,6 @@ def unload_models(args):
     client.unload_all()
 
 
-def generate(prompt=None):
-    prompt = prompt or input('> ')
-    client = OllamaClient(
-        host=args.host,
-        timeout=args.timeout,
-    )
-
-
 def main():
     parser = argparse.ArgumentParser()
 

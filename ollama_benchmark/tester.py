@@ -2,7 +2,7 @@ import time
 import logging
 import platform
 from concurrent.futures import ThreadPoolExecutor
-from ollama_benchmark.client import OllamaClient
+from ollama_benchmark import client
 
 try:
     from probes import ProbeManager
@@ -25,7 +25,7 @@ class BaseTester:
         monitoring_probers=None,
         monitoring_interval=5,
     ):
-        self.client = OllamaClient(
+        self.client = client.OllamaClient(
             host=host,
             timeout=timeout,
         )
@@ -40,9 +40,7 @@ class BaseTester:
         self.monitoring_interval = monitoring_interval
 
     def pull_model(self):
-        self.logger.info("Pulling model %s", self.model)
-        self.client.client.pull(self.model)
-        self.logger.debug("Pulled model %s", self.model)
+        self.client.pull(self.model)
 
     def start_monitoring(self, probers, interval=5):
         if not probers:
@@ -66,17 +64,10 @@ class BaseTester:
         return self.probe_manager.get_results(),
 
     def prewarm(self):
-        prompt = "Hello world"
-        messages = [{
-            "role": "user",
-            "content": prompt,
-        }]
-        self.logger.debug('Prewarm request > %s', prompt)
-        response = self.client.client.chat(
-            model=self.model,
-            messages=messages,
-        )
-        self.logger.info('< %s', response['message']['content'])
+        try:
+            self.client.prewarm(self.model)
+        except client.OllamaTimeoutError as err:
+            self.logger.warning("Error in prewarm: %s", err)
 
     def run(self, *args, **kwargs):
         raise NotImplementedError()

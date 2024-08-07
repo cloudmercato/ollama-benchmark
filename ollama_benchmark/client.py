@@ -1,6 +1,7 @@
+import logging
+import httpx
 from ollama import Client
 from ollama_benchmark import settings
-import httpx
 
 
 class ClientError(Exception):
@@ -11,12 +12,18 @@ class OllamaConnectionError(ClientError):
     pass
 
 
+class OllamaTimeoutError(ClientError):
+    pass
+
+
 def exception_checker(func):
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
         except httpx.ConnectError as e:
             raise OllamaConnectionError(e)
+        except httpx.ReadTimeout as e:
+            raise OllamaTimeoutError(e)
         except Exception as e:
             raise ClientError(e)
     return wrapper
@@ -34,6 +41,7 @@ class OllamaClient:
         self.host = host
         self.follow_redirects = follow_redirects
         self.timeout = timeout
+        self.logger = logging.getLogger("ollama_benchmark")
 
     @property
     def client(self):
@@ -51,6 +59,12 @@ class OllamaClient:
         if response.status_code >= 300:
             raise ClientError(response.status_code)
         return response.json()['version']
+
+    @exception_checker
+    def pull_model(self, model):
+        self.logger.info("Pulling model %s", model)
+        self.client.pull(model)
+        self.logger.debug("Pulled model %s", model)
 
     @exception_checker
     def list_running_models(self):
@@ -77,6 +91,20 @@ class OllamaClient:
         models = self.list_running_models()
         for model in models:
             self.unload(model['name'])
+
+    @exception_checker
+    def prewarm(self, model):
+        prompt = "Hello world"
+        messages = [{
+            "role": "user",
+            "content": prompt,
+        }]
+        self.logger.debug('Prewarm request > %s', prompt)
+        response = self.client.chat(
+            model=model,
+            messages=messages,
+        )
+        self.logger.info('< %s', response['message']['content'])
 
     @exception_checker
     def embed(self, model, input_, options):
