@@ -10,7 +10,7 @@ logger = logging.getLogger("ollama_benchmark")
 def make_args(subparsers):
     parser = subparsers.add_parser("load", help="Evaluate model loading speed")
     parser.add_argument('--max-workers', default=1, type=int)
-    parser.add_argument('models', nargs='+')
+    parser.add_argument('models', nargs='*')
     utils.add_tester_arguments(parser)
 
 

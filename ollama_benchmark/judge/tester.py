@@ -35,6 +35,7 @@ class Tester(BaseTester):
         self,
         question,
         judge_model,
+        ollama_judge_options=None,
         max_turns=1,
         *args, **kwargs
     ):
@@ -42,6 +43,7 @@ class Tester(BaseTester):
         self.question = question
         self.max_turns = max_turns
         self.judge_model = judge_model
+        self.ollama_judge_options=ollama_judge_options,
 
     def get_tasks(self):
         return [self.question]
@@ -92,6 +94,7 @@ class Tester(BaseTester):
             judge_prompt = JUDGE_PROMPT.format(
                 question=prompt['content'],
                 answer=answer['content'],
+                options=self.ollama_judge_options,
             )
             judge_messages = [{
                 "role": "system",
@@ -112,13 +115,15 @@ class Tester(BaseTester):
         return judgements
 
     def _parse_judgement(self, judgement):
-        print(judgement)
         return json.loads(judgement)
 
     def run(self, question_id):
         t0 = time.time()
         messages = self.run_turns(question_id)
         message_duration = time.time() - t0
+
+        if self.model == self.judge_model:
+            self.unload(self.model)
 
         t0 = time.time()
         judgements = self.evaluate_turns(messages)

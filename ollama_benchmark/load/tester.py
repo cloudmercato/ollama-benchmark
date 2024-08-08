@@ -21,6 +21,10 @@ class Tester(BaseTester):
             for task in self.get_tasks()
         )
 
+    def pull_model(self):
+        for model in self.models:
+            self.client.pull_model(model)
+
     def prewarm(self):
         self.client.unload_all()
 
