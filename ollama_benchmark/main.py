@@ -59,6 +59,7 @@ def main():
         exit(1)
     except errors.OllamaBenchmarkError as err:
         print(err)
+        exit(1)
 
 
 if __name__ == '__main__':
