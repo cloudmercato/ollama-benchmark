@@ -3,7 +3,7 @@ import logging
 from collections import defaultdict
 
 from ollama_benchmark import utils
-from ollama_benchmark.speed import run_test
+from ollama_benchmark.speed.tester import Tester
 
 logger = logging.getLogger("ollama_benchmark")
 
@@ -80,7 +80,7 @@ def main(args):
         'top_p': args.top_p,
         'min_p': args.min_p,
     }
-    tester = run_test.Tester(
+    tester = Tester(
         host=args.host,
         timeout=args.timeout,
         model=args.model,

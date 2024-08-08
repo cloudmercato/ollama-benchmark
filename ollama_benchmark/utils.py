@@ -94,12 +94,14 @@ data_manager = DataManager()
 
 
 def mean(values):
+    values = [v for v in values if v is not None]
     if not values:
         return
     return statistics.mean(values)
 
 
 def stdev(values):
+    values = [v for v in values if v is not None]
     if not values:
         return
     if len(values) == 1:
@@ -108,18 +110,21 @@ def stdev(values):
 
 
 def min(values):
+    values = [v for v in values if v is not None]
     if not values:
         return
     return builtins.min(values)
 
 
 def max(values):
+    values = [v for v in values if v is not None]
     if not values:
         return
     return builtins.max(values)
 
 
 def perc95(values):
+    values = [v for v in values if v is not None]
     if not values:
         return
     if len(values) == 1:
