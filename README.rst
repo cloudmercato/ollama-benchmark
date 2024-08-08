@@ -3,6 +3,10 @@ Ollama Benchmark
 
 ollama-benchmark is a handy tool to measure the performance and efficiency of LLMs workloads.
 
+.. contents:: Table of Contents
+   :depth: 3
+   :local:
+
 Get started
 ===========
 
@@ -22,10 +26,11 @@ Usage
 
 ollama-benchmark deliver several workloads:
 
-- ``speed``: Chat speed performance
-- ``embedding``: Embedding speed performance
-- ``load``: Model loading
-- ``judge``: Chat quality
+- ``speed``: Evaluate chat speed performance
+- ``embedding``: Evaluate embedding peformance
+- ``load``: Evaluate model loading speed
+- ``judge``: Evaluate answer quality with LLM-as-a-Judge
+- ``chat``: Live evaluate performance while chatting
 
 Please keep in mind the ollama server configuration during evaluation of results. See `this part of the FAQ <https://github.com/ollama/ollama/blob/8b920f35a46c6459e0fd48daa38bc80963bf6462/docs/faq.md#how-does-ollama-handle-concurrent-requests>`_  for more understanding of Ollama's performance.
 
@@ -97,12 +102,82 @@ Example::
 load
 @@@@
 
-WIP
+Evaluate the duration of loading one or several models into memory.
+
+Example::
+
+  $ ollama-benchmark --host zulumini:11434 load qwen:0.5b
+  qwen:0.5b
+  version: 0.1
+  models: ["qwen:0.5b"]
+  max_workers: 1
+  duration_min: 0.5746748447418213
+  duration_max: 0.5746748447418213
+  duration_mean: 0.5746748447418213
+  duration_stdev: 0.0
+  duration_perc95: 0.5746748447418213
+  total_duration: 0.5746748447418213
+  real_duration: 0.6157209873199463
+  rate_min: 1.7401144475868968
+  rate_max: 1.7401144475868968
+  rate_mean: 1.7401144475868968
+  rate_stdev: 0.0
+  rate_perc95: 1.7401144475868968
+  errors: 0
 
 judge
 @@@@@
 
-WIP
+Use LLM-as-a-Judge technic to evaluate quality of given response.
+
+Example::
+
+  $ ollama-benchmark judge --question 81 --judge-model llama3 --model qwen:1.8b --max_turns 1
+  version: 0.1
+  model: qwen:1.8b
+  judge_model: llama3
+  question_id: 81
+  max_turns: 2
+  mirostat: 0
+  mirostat_eta: 0.1
+  ...
+  judge_top_k: 40
+  judge_top_p: 0.9
+  judge_min_p: 0.0
+  message_duration: 1.4621801376342773
+  judge_duration: 14.956491947174072
+  work_duration: 16.41867208480835
+  total_rating_mean: 30
+  total_rating_stdev: 0.0
+  total_ratings: [30]
+  0;evaluation: The answer provides a general overview of the state of Hawaii and mentions two must-see attractions, Waikiki Beach and Haleakala National Park. However, it lacks cultural experiences and details about the trip.
+  0;feedback: To improve this response, I would suggest providing more specific examples of cultural experiences had during the trip, such as visiting local markets, trying traditional Hawaiian cuisine, or attending a luau. Additionally, including more vivid descriptions of the natural attractions mentioned could make the post more engaging.
+
+chat
+@@@@
+
+Make a live chat in command line and get live performance data.
+
+Example::
+
+  $ ollama-benchmark chat
+  load_model_duration:  6.159428119659424
+  > Hello world
+  < A classic!
+
+  "Hello, World!" is a traditional greeting in programming, often used to test if a program is working correctly. It's a simple yet iconic phrase that has been a part of computer culture for decades.
+
+  So, what brings you here today? Are you looking for help with a programming problem or just wanting to say hello? Either way, I'm happy to chat!
+  total_duration:  3.52207325
+  load_duration:  0.032622416
+  prompt_eval_count:  12
+  prompt_eval_duration:  1.094229
+  eval_count:  78
+  eval_duration:  2.393477
+  request_duration:  3.6268999576568604
+  > \q
+
+Special command are available with the prefix ``\``, type ``\help`` to get more informations.
 
 Monitoring
 @@@@@@@@@@
@@ -110,7 +185,7 @@ Monitoring
 ollama-benchmark includes a built-in monitoring tool running the time of each workloads. Use following option to control it:
 
 - ``--monitoring-interval``: Define the interval between each probe
-- ``--monitoring-probers``: Define probers as Python path (ie: `path.to.my.Prober`), see `Probes' documentation <https://github.com/cloudmercato/Probes/blob/main/README>`_
+- ``--monitoring-probers``: Define probers as Python path (ie: `path.to.my.Prober`), see `Probes' documentation <https://github.com/cloudmercato/Probes/blob/main/README.rst>`_
 - ``--monitoring-output``: Define path to the JSON output
 - ``--disable-monitoring``: Completly disable monitoring
 
@@ -132,7 +207,7 @@ You can list questions with the following command::
 
 Just pulling models is also doable::
 
-  ollama-benchmark pull-model llama3 phi3
+  ollama-benchmark pull_model llama3 phi3
                          
 External links
 --------------
