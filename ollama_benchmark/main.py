@@ -29,7 +29,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--host', default=settings.HOST)
-    parser.add_argument('--timeout', default=settings.TIMEOUT)
+    parser.add_argument('--timeout', default=settings.TIMEOUT, type=int)
     parser.add_argument('-v', '--verbosity', type=int, default=0, choices=(0, 1, 2))
 
     subparsers = parser.add_subparsers(dest="action")
