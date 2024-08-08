@@ -89,6 +89,7 @@ def main(args):
         prewarm=args.prewarm,
         max_workers=args.max_workers,
         questions=args.questions,
+        monitoring_enabled=args.monitoring_enabled,
     )
     run_results = tester.run_suite()
 

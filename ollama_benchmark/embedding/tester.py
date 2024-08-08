@@ -1,6 +1,7 @@
 import time
 import random
 from ollama_benchmark import utils
+from ollama_benchmark import errors
 from ollama_benchmark.tester import BaseTester
 from ollama_benchmark.embedding import samples
 
@@ -57,7 +58,7 @@ class Tester(BaseTester):
                 input_=input_,
                 options=self.ollama_options,
             )
-        except self.client.ClientError as err:
+        except errors.ClientError as err:
             self.logger.debug('Client error : %s', err.args[0])
             result['error_duration'] = time.time() - t0
             result["errors"] += 1

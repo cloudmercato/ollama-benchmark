@@ -2,41 +2,27 @@ import argparse
 
 from ollama_benchmark import settings
 from ollama_benchmark import utils
+from ollama_benchmark import errors
 from ollama_benchmark.loggers import logger
-from ollama_benchmark.client import OllamaClient
 from ollama_benchmark.speed import main as speed
 from ollama_benchmark.load import main as load
-from ollama_benchmark import chat
+from ollama_benchmark.judge import main as judge
 from ollama_benchmark.embedding import main as embedding
+from ollama_benchmark import chat
+from ollama_benchmark import pull_models
+from ollama_benchmark import unload_models
+from ollama_benchmark import print_questions
 
-
-def print_questions():
-    print("   ID | Category | # Turns | Turns")
-    questions = utils.data_manager.list_questions()
-    row_template = "{question_id:5} | {category:^8} | {num_turns:3} | {turns}"
-    for question in questions:
-        row = row_template.format(
-            num_turns=len(question['turns']),
-            **question
-        )
-        print(row)
-
-
-def pull_models(args):
-    client = OllamaClient(
-        host=args.host,
-        timeout=args.timeout,
-    )
-    for model in args.models:
-        client.client.pull(model)
-
-
-def unload_models(args):
-    client = OllamaClient(
-        host=args.host,
-        timeout=args.timeout,
-    )
-    client.unload_all()
+ACTIONS = {
+    'speed': speed.main,
+    'embedding': embedding.main,
+    'load': load.main,
+    'chat': chat.main,
+    'pull_models': pull_models.main,
+    'unload_models': unload_models.main,
+    'judge': judge.main,
+    'questions': print_questions.main,
+}
 
 
 def main():
@@ -52,36 +38,27 @@ def main():
     embedding.make_parser(subparsers)
     load.make_args(subparsers)
     chat.make_args(subparsers)
-    judge_parser = subparsers.add_parser("judge", help="Evaluate chat quality")
-    subparsers.add_parser("unload", help="Unload all models from memory")
-    subparsers.add_parser("questions", help="")
-
-    pull_models_parser = subparsers.add_parser("pull-models", help="")
-    pull_models_parser.add_argument('models', action='append')
+    judge.make_args(subparsers)
+    pull_models.make_args(subparsers)
+    unload_models.make_args(subparsers)
+    print_questions.make_args(subparsers)
 
     args = parser.parse_args()
+    if args.action not in ACTIONS:
+        parser.print_help()
+        exit(1)
 
     logger.setLevel(40-(10+args.verbosity*10))
     logger.info('Log level: %s', logger.level)
 
-    if args.action == 'speed':
-        speed.main(args)
-    elif args.action == 'embedding':
-        embedding.main(args)
-    elif args.action == 'load':
-        load.main(args)
-    elif args.action == 'chat':
-        chat.main(args)
-    elif args.action == 'unload':
-        unload_models(args)
-    elif args.action == 'judge':
-        print("Not implemented yet")
-    elif args.action == 'questions':
-        print_questions()
-    elif args.action == 'pull-models':
-        pull_models(args)
-    else:
-        parser.print_help()
+    action = ACTIONS[args.action]
+    try:
+        action(args)
+    except KeyboardInterrupt:
+        print("Stopped")
+        exit(1)
+    except errors.OllamaBenchmarkError as err:
+        print(err)
 
 
 if __name__ == '__main__':

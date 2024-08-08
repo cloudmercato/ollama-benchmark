@@ -1,6 +1,7 @@
 import time
 import logging
 from ollama_benchmark import utils
+from ollama_benchmark import errors
 from ollama_benchmark import client
 
 logger = logging.getLogger('ollama_benchmark')
@@ -44,8 +45,6 @@ FUNCS_ALIASES = {
 
 
 def main(args):
-    model = args.model
-
     cl = client.OllamaClient(
         host=args.host,
         timeout=args.timeout,
@@ -119,7 +118,7 @@ def main(args):
         while 1:
             try:
                 loop(messages)
-            except client.OllamaConnectionError as err:
+            except errors.OllamaConnectionError as err:
                 print(err, '\n')
     except KeyboardInterrupt:
         print('')

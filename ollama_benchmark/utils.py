@@ -149,7 +149,7 @@ def add_tester_arguments(parser):
 
 def add_monitoring_arguments(parser):
     parser.add_argument(
-        '--disable-monitoring', action="store_false", dest="monitoring",
+        '--disable-monitoring', action="store_false", dest="monitoring_enabled",
     )
     parser.add_argument(
         '--monitoring-interval', type=int, default=5,

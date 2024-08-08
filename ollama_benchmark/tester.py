@@ -3,6 +3,7 @@ import logging
 import platform
 from concurrent.futures import ThreadPoolExecutor
 from ollama_benchmark import client
+from ollama_benchmark import errors
 
 try:
     from probes import ProbeManager
@@ -40,7 +41,7 @@ class BaseTester:
         self.monitoring_interval = monitoring_interval
 
     def pull_model(self):
-        self.client.pull(self.model)
+        self.client.pull_model(self.model)
 
     def start_monitoring(self, probers, interval=5):
         if not probers:
@@ -66,7 +67,7 @@ class BaseTester:
     def prewarm(self):
         try:
             self.client.prewarm(self.model)
-        except client.OllamaTimeoutError as err:
+        except errors.OllamaTimeoutError as err:
             self.logger.warning("Error in prewarm: %s", err)
 
     def run(self, *args, **kwargs):

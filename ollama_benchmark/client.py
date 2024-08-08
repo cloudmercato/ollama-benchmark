@@ -1,36 +1,32 @@
 import logging
 import httpx
 from ollama import Client
+from ollama._types import ResponseError
 from ollama_benchmark import settings
-
-
-class ClientError(Exception):
-    pass
-
-
-class OllamaConnectionError(ClientError):
-    pass
-
-
-class OllamaTimeoutError(ClientError):
-    pass
+from ollama_benchmark import errors
 
 
 def exception_checker(func):
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except httpx.ConnectError as e:
-            raise OllamaConnectionError(e)
-        except httpx.ReadTimeout as e:
-            raise OllamaTimeoutError(e)
-        except Exception as e:
-            raise ClientError(e)
+        except httpx.ConnectError as err:
+            raise errors.OllamaConnectionError(err)
+        except httpx.ReadTimeout as err:
+            raise errors.OllamaTimeoutError(err)
+        except ResponseError as err:
+            if 'not found, try pulling it first' in err.args[0]:
+                raise errors.OllamaModelUnfoundError(err.args[0])
+            if 'pull model manifest: file does not exist' in err.args[0]:
+                raise errors.OllamaModelDoesNotExistError(err.args[0])
+            raise
+        except Exception as err:
+            raise errors.ClientError(err)
     return wrapper
 
 
 class OllamaClient:
-    err_class = ClientError
+    err_class = errors.ClientError
 
     def __init__(
         self,
@@ -57,7 +53,7 @@ class OllamaClient:
     def get_version(self):
         response = self.client._request('GET', '/api/version')
         if response.status_code >= 300:
-            raise ClientError(response.status_code)
+            raise errors.ClientError(response.status_code)
         return response.json()['version']
 
     @exception_checker
@@ -70,7 +66,7 @@ class OllamaClient:
     def list_running_models(self):
         response = self.client._request('GET', '/api/ps')
         if response.status_code >= 300:
-            raise ClientError(response.status_code)
+            raise errors.ClientError(response.status_code)
         return response.json()['models']
 
     @exception_checker
@@ -82,10 +78,12 @@ class OllamaClient:
 
     @exception_checker
     def unload(self, model):
-        self.client.generate(
-            model=model,
-            keep_alive=0,
-        )
+        model_names = [m['name'] for m in self.list_running_models()]
+        if model in model_names:
+            self.client.generate(
+                model=model,
+                keep_alive=0,
+            )
 
     def unload_all(self):
         models = self.list_running_models()
@@ -114,7 +112,7 @@ class OllamaClient:
             'options': options,
         })
         if response.status_code >= 300:
-            raise ClientError(response.status_code)
+            raise errors.ClientError(response.status_code)
         return response.json()
 
     @exception_checker
