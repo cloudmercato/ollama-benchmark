@@ -1,6 +1,7 @@
 import json
 import time
 from ollama_benchmark import utils
+from ollama_benchmark import errors
 from ollama_benchmark.tester import BaseTester
 
 JUDGE_SYSTEM_PROMPT = """
@@ -9,10 +10,10 @@ Your task is to provide a 'total rating' scoring how well the system_answer answ
 Give your answer on a scale of 1 to 100, where 1 means that the system_answer is not helpful at all, and 100 means that the system_answer completely and helpfully addresses the user_question.
 
 Here is the scale you should use to build your answer:
-1: The system_answer is terrible: completely irrelevant to the question asked, or very partial
-2: The system_answer is mostly not helpful: misses some key aspects of the question
-3: The system_answer is mostly helpful: provides support, but still could be improved
-4: The system_answer is excellent: relevant, direct, detailed, and addresses all the concerns raised in the question
+10: The system_answer is terrible: completely irrelevant to the question asked, or very partial
+30: The system_answer is mostly not helpful: misses some key aspects of the question
+60: The system_answer is mostly helpful: provides support, but still could be improved
+90: The system_answer is excellent: relevant, direct, detailed, and addresses all the concerns raised in the question
 
 Provide your feedback as JSON as follows with just the result, no other text:
 
@@ -35,6 +36,8 @@ class Tester(BaseTester):
         self,
         question,
         judge_model,
+        judge_system_prompt=None,
+        judge_prompt=None,
         ollama_judge_options=None,
         max_turns=1,
         *args, **kwargs
@@ -43,7 +46,15 @@ class Tester(BaseTester):
         self.question = question
         self.max_turns = max_turns
         self.judge_model = judge_model
-        self.ollama_judge_options=ollama_judge_options,
+        self.ollama_judge_options = ollama_judge_options,
+        self.judge_system_prompt = judge_system_prompt or JUDGE_SYSTEM_PROMPT
+        self.judge_prompt = judge_prompt or JUDGE_PROMPT
+
+    def check_config(self):
+        for text in ('{question}', '{answer}'):
+            if text not in self.judge_prompt:
+                msg = f"The judge prompt must contains '{text}'"
+                raise errors.ConfigurationError(msg)
 
     def get_tasks(self):
         return [self.question]
@@ -91,19 +102,19 @@ class Tester(BaseTester):
         while messages:
             prompt = messages.pop(0)
             answer = messages.pop(0)
-            judge_prompt = JUDGE_PROMPT.format(
+            judge_prompt = self.judge_prompt.format(
                 question=prompt['content'],
                 answer=answer['content'],
                 options=self.ollama_judge_options,
             )
             judge_messages = [{
                 "role": "system",
-                "content": JUDGE_SYSTEM_PROMPT,
+                "content": self.judge_system_prompt,
             }, {
                 "role": "user",
                 "content": judge_prompt,
             }]
-            self.logger.debug('system > %s', JUDGE_SYSTEM_PROMPT)
+            self.logger.debug('system > %s', self.judge_system_prompt)
             self.logger.info('> %s', judge_prompt)
             response = self.client.chat(
                 model=self.judge_model,
@@ -123,7 +134,7 @@ class Tester(BaseTester):
         message_duration = time.time() - t0
 
         if self.model == self.judge_model:
-            self.unload(self.model)
+            self.client.unload(self.model)
 
         t0 = time.time()
         judgements = self.evaluate_turns(messages)

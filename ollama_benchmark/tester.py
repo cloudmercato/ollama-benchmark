@@ -40,6 +40,9 @@ class BaseTester:
         self.monitoring_probers = monitoring_probers
         self.monitoring_interval = monitoring_interval
 
+    def check_config(self):
+        pass
+
     def pull_model(self):
         self.client.pull_model(self.model)
 

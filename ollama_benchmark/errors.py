@@ -2,6 +2,10 @@ class OllamaBenchmarkError(Exception):
     pass
 
 
+class ConfigurationError(OllamaBenchmarkError):
+    pass
+
+
 class ClientError(OllamaBenchmarkError):
     pass
 

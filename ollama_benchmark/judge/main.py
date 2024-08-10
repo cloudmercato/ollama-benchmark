@@ -1,7 +1,11 @@
+import argparse
 import logging
+
 from ollama_benchmark import settings
 from ollama_benchmark import utils
+from ollama_benchmark import errors
 from ollama_benchmark.judge.tester import Tester
+from ollama_benchmark.judge.tester import JUDGE_SYSTEM_PROMPT, JUDGE_PROMPT
 
 logger = logging.getLogger("ollama_benchmark")
 
@@ -58,6 +62,23 @@ def make_args(subparsers):
         help='Alternative to the top_p, and aims to ensure a balance of quality and variety. (Default: 0.0)'
     )
 
+    parser.add_argument(
+        '--judge-system-prompt', type=argparse.FileType('r'), required=False,
+        help='Path to alternative judge system prompt to use.'
+    )
+    parser.add_argument(
+        '--judge-prompt', type=argparse.FileType('r'), required=False,
+        help='Path to alternative judge prompt to use.'
+    )
+    parser.add_argument(
+        '--show-judge-system-prompt', action="store_true",
+        help='Display default judge system prompt',
+    )
+    parser.add_argument(
+        '--show-judge-prompt', action="store_true",
+        help='Display default judge prompt',
+    )
+
 
 def print_results(args, results, ollama_options, ollama_judge_options):
     utils.print_main()
@@ -102,6 +123,13 @@ def print_results(args, results, ollama_options, ollama_judge_options):
 
 
 def main(args):
+    if args.show_judge_system_prompt:
+        print(JUDGE_SYSTEM_PROMPT)
+        exit(0)
+    elif args.show_judge_prompt:
+        print(JUDGE_PROMPT)
+        exit(0)
+
     ollama_options = {
         'mirostat': args.mirostat,
         'mirostat_eta': args.mirostat_eta,
@@ -142,8 +170,16 @@ def main(args):
         max_workers=1,
         question=args.question,
         judge_model=args.judge_model,
+        judge_system_prompt=args.judge_system_prompt,
+        judge_prompt=args.judge_prompt,
         monitoring_enabled=False,
     )
+    try:
+        tester.check_config()
+    except errors.ConfigurationError as err:
+        print(f"Configuration error: {err}")
+        exit(1)
+
     run_results = tester.run_suite()
 
     print_results(
