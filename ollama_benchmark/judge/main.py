@@ -1,4 +1,5 @@
 import argparse
+import json
 import logging
 
 from ollama_benchmark import settings
@@ -12,6 +13,10 @@ logger = logging.getLogger("ollama_benchmark")
 
 def make_args(subparsers):
     parser = subparsers.add_parser("judge", help="Evaluate answer quality with LLM-as-a-Judge")
+    parser.add_argument(
+        '--system-prompt', type=argparse.FileType('r'), required=False,
+        help='Path to system prompt to use.'
+    )
     parser.add_argument('--judge-model', default=settings.JUDGE_MODEL)
     parser.add_argument('--question', default='81')
     parser.add_argument('--max_turns', default=None, type=int, required=False)
@@ -77,6 +82,15 @@ def make_args(subparsers):
     parser.add_argument(
         '--show-judge-prompt', action="store_true",
         help='Display default judge prompt',
+    )
+
+    parser.add_argument(
+        '--save-messages', type=argparse.FileType('w'), required=False,
+        help='Path where to save the messages from the conversation as JSON.'
+    )
+    parser.add_argument(
+        '--load-messages', type=argparse.FileType('r'), required=False,
+        help='Path where to get the messages given to the judge.'
     )
 
 
@@ -163,6 +177,7 @@ def main(args):
         host=args.host,
         timeout=args.timeout,
         model=args.model,
+        system_prompt=args.system_prompt,
         ollama_options=ollama_options,
         ollama_judge_options=ollama_judge_options,
         pull=args.pull,
@@ -173,6 +188,7 @@ def main(args):
         judge_system_prompt=args.judge_system_prompt,
         judge_prompt=args.judge_prompt,
         monitoring_enabled=False,
+        load_messages=args.load_messages,
     )
     try:
         tester.check_config()
@@ -188,3 +204,7 @@ def main(args):
         ollama_options,
         ollama_judge_options,
     )
+
+    if args.save_messages:
+        messages = [r['messages'] for r in run_results['results']]
+        args.save_messages.write(json.dumps(messages))
