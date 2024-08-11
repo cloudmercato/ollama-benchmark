@@ -190,7 +190,8 @@ def add_ollama_config_arguments(parser):
         '--repeat_last_n', type=int, default=64,
         help='Sets how far back for the model to look back to prevent repetition. (Default: 64, 0 = disabled, -1 = num_ctx)'
     )
-    parser.add_argument('--repeat_penalty', type=float, default=1.1,
+    parser.add_argument(
+        '--repeat_penalty', type=float, default=1.1,
         help='Sets how strongly to penalize repetitions. (Default: 1.1)'
     )
     parser.add_argument(

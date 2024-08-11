@@ -203,7 +203,7 @@ class Tester(BaseTester):
             if not value:
                 continue
             if value[0].isdigit():
-                value = int(value.split('/')[0].strip())
+                value = float(value.split('/')[0].strip())
             data[key] = value
         try:
             dict(data)
