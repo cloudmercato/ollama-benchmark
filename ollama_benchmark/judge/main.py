@@ -96,11 +96,6 @@ def make_args(subparsers):
 
 def print_results(args, results, ollama_options, ollama_judge_options):
     utils.print_main()
-    judgements = [
-        judgement
-        for run in results
-        for judgement in run['judgements']
-    ]
 
     overall_results = {
         'model': args.model,
@@ -115,25 +110,60 @@ def print_results(args, results, ollama_options, ollama_judge_options):
     for key, value in ollama_judge_options.items():
         print(f"judge_{key}: {value}")
 
-    skipped = ('judgements', )
+    skipped = ('judgements', 'self_judgement', 'messages')
     for result in results:
         for key, value in result.items():
             if key in skipped:
                 continue
             print(f"{key}: {value}")
-
-    total_ratings = [i['total_rating'] for i in judgements]
-    data = {
-        'total_rating_mean': utils.mean(total_ratings),
-        'total_rating_stdev': utils.stdev(total_ratings),
-    }
-    for key, value in data.items():
-        print(f"{key}: {value}")
-    print(f"total_ratings: {total_ratings}")
-
+    # Scores
+    judgements = [
+        judgement
+        for run in results
+        for judgement in run['judgements']
+    ]
+    rating_keys = (
+        'relevance',
+        'coherence',
+        'quality',
+        'language',
+        'originality',
+        'neutrality',
+        'total_rating',
+    )
+    for key in rating_keys:
+        total_ratings = [i[key] for i in judgements]
+        data = {
+            f'{key}_mean': utils.mean(total_ratings),
+            f'{key}_stdev': utils.stdev(total_ratings),
+        }
+        for key_, value in data.items():
+            print(f"{key_}: {value}")
+        print(f"{key}: {total_ratings}")
     for i, judgement in enumerate(judgements):
-        print(f"{i};evaluation: {judgement['evaluation']}")
-        print(f"{i};feedback: {judgement.get('feedback')}")
+        if 'evaluation' in judgement:
+            print(f"{i};evaluation: {judgement['evaluation']}")
+        if 'feedback' in judgement:
+            print(f"{i};feedback: {judgement.get('feedback')}")
+    # Not self-judge with loaded messages
+    if not args.load_messages:
+        self_judgements = [
+            run['self_judgement']
+            for run in results
+        ]
+        total_self_ratings = [i['total_rating'] for i in self_judgements
+                              if 'total_rating' in i]
+        data = {
+            'total_self_rating_mean': utils.mean(total_self_ratings),
+            'total_self_rating_stdev': utils.stdev(total_self_ratings),
+        }
+        for key, value in data.items():
+            print(f"{key}: {value}")
+        print(f"total_self_ratings: {total_self_ratings}")
+        for i, judgement in enumerate(self_judgements):
+            if 'evaluation' in judgement:
+                print(f"{i};self_evaluation: {judgement['evaluation']}")
+            print(f"{i};self_feedback: {judgement.get('feedback')}")
 
 
 def main(args):
@@ -165,8 +195,11 @@ def main(args):
         'mirostat_eta': args.judge_mirostat_eta,
         'mirostat_tau': args.judge_mirostat_tau,
         'num_ctx': args.judge_num_ctx,
+        'repeat_last_n': -1,
+        'repeat_penalty': 1.1,
         'temperature': args.judge_temperature,
         'seed': args.judge_seed,
+        'stop': None,
         'tfs_z': args.judge_tfs_z,
         'num_predict': args.judge_num_predict,
         'top_k': args.judge_top_k,

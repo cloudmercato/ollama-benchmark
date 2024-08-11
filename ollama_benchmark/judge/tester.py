@@ -7,27 +7,48 @@ from ollama_benchmark.tester import BaseTester
 JUDGE_SYSTEM_PROMPT = """
 You will be given a user_question and system_answer couple.
 Your task is to provide a 'total rating' scoring how well the system_answer answers the user concerns expressed in the user_question.
-Give your answer on a scale of 1 to 100, where 1 means that the system_answer is not helpful at all, and 100 means that the system_answer completely and helpfully addresses the user_question.
+Give your answer on a scale of 0 to 20, where 0 means that the system_answer is not helpful at all, and 20 means that the system_answer completely and helpfully addresses the user_question.
 
-Here is the scale you should use to build your answer:
-10: The system_answer is terrible: completely irrelevant to the question asked, or very partial
-30: The system_answer is mostly not helpful: misses some key aspects of the question
-60: The system_answer is mostly helpful: provides support, but still could be improved
-90: The system_answer is excellent: relevant, direct, detailed, and addresses all the concerns raised in the question
+Here is an example of rating with comment:
+5: The system_answer is terrible: completely irrelevant to the question asked, or very partial
+8: The system_answer is mostly not helpful: misses some key aspects of the question
+12: The system_answer is mostly helpful: provides support, but still could be improved
+18: The system_answer is excellent: relevant, direct, detailed, and addresses all the concerns raised in the question
 
-Provide your feedback as JSON as follows with just the result, no other text:
+Here's a methodology for rating:
+    - 5 points on relevance: Does the response directly and fully answer the question asked? Is it consistent with the context?
+    - 4 points on coherence: Is the response logical and coherent in itself? Are there no contradictions or absurdities?
+    - 4 points on quality of argumentation: Is the response supported by clear and relevant arguments? Does it use concrete examples?
+    - 3 points on language: Is the response expressed in clear, precise language appropriate to the context? Is the spelling, grammar or code syntax correct?
+    - 2 points on originality: Does the response bring an original point of view or a new perspective on the question?
+    - 2 points on neutrality: Is the response objective and neutral? Does it avoid personal biases or subjective opinions?
+For a total_rating of 20 points. Never gives more points than what described above.
 
-{
-    "evaluation": "(your rationale for the rating, as a text)",
-    "total_rating": "(your rating, as a number between 1 and 100)",
-    "feedback": "(How you think it could be improved)",
-}
+Provide your feedback as a key:value text, easy for parsing, with no other text than the output. Here's an example of output:
+
+    relevance:1/5
+    coherence:2/4
+    quality:3/4
+    language:1/3
+    originality:1/2
+    neutrality:1/2
+    total_rating:7/20
+    evaluation:(your rationale for the rating, as a text)
+    feedback:(How you think it could be improved)
 """
 JUDGE_PROMPT = """
 Now here are the question and answer.
 
 Question: {question}
 Answer: {answer}
+"""
+SELF_ESTEEM_PROMPT = """
+From 0 to 20, how do you evaluate the quality of your answer ?
+
+Provide your feedback as a key:value text file just the result, no other text.Here's an example of output:
+
+    evaluation:(your rationale for the rating, as a text)
+    total_rating:5/20
 """
 
 
@@ -47,7 +68,7 @@ class Tester(BaseTester):
         super().__init__(*args, **kwargs)
         self.judge_model = judge_model
         self.system_prompt = system_prompt
-        self.ollama_judge_options = ollama_judge_options,
+        self.ollama_judge_options = ollama_judge_options
         self.judge_system_prompt = judge_system_prompt or JUDGE_SYSTEM_PROMPT
         self.judge_prompt = judge_prompt or JUDGE_PROMPT
         self.question = question
@@ -56,6 +77,8 @@ class Tester(BaseTester):
 
     @property
     def load_messages(self):
+        if not self.load_messages_file:
+            return None
         if not hasattr(self, '_load_messages'):
             try:
                 self._load_messages = json.load(self.load_messages_file)
@@ -136,7 +159,6 @@ class Tester(BaseTester):
             judge_prompt = self.judge_prompt.format(
                 question=prompt['content'],
                 answer=answer['content'],
-                options=self.ollama_judge_options,
             )
             judge_messages = [{
                 "role": "system",
@@ -145,30 +167,68 @@ class Tester(BaseTester):
                 "role": "user",
                 "content": judge_prompt,
             }]
-            self.logger.debug('system > %s', self.judge_system_prompt)
-            self.logger.info('> %s', judge_prompt)
+            self.logger.debug('judge system > %s', self.judge_system_prompt)
+            self.logger.info('judge > %s', judge_prompt)
             response = self.client.chat(
                 model=self.judge_model,
                 messages=judge_messages,
-                options=self.ollama_options,
+                options=self.ollama_judge_options,
             )
-            self.logger.info('< %s', response['message']['content'])
+            self.logger.info('judge < %s', response['message']['content'])
             judgements.append(response)
         return judgements
 
+    def self_evaluate_turns(self, messages):
+        messages = messages[::]
+        messages.append({
+            "role": "user",
+            "content": SELF_ESTEEM_PROMPT,
+        })
+        self.logger.info('> %s', SELF_ESTEEM_PROMPT)
+        response = self.client.chat(
+            model=self.model,
+            messages=messages,
+            options=self.ollama_options,
+        )
+        self.logger.info('< %s', response['message']['content'])
+        return response
+
     def _parse_judgement(self, judgement):
-        return json.loads(judgement)
+        data = {}
+        for line in judgement.splitlines():
+            line = line.strip()
+            if ':' not in line or not line:
+                continue
+            key, value = [i.strip() for i in line.split(':', 1)]
+            if not value:
+                continue
+            if value[0].isdigit():
+                value = int(value.split('/')[0].strip())
+            data[key] = value
+        try:
+            dict(data)
+        except ValueError:
+            data = {}
+        if 'total_rating' not in data:
+            data = {}
+        self.logger.info('Judgment values: %s', data)
+        return data
 
     def run(self, question_id):
-        t0 = time.time()
         if self.load_messages:
             messages = self.load_messages[question_id]
+            message_duration = 0
+            self_judgement_content = {}
         else:
+            t0 = time.time()
             messages = self.run_turns(question_id)
-        message_duration = time.time() - t0
+            message_duration = time.time() - t0
 
-        if (not self.load_messages) and self.model == self.judge_model:
-            self.client.unload(self.model)
+            self_judgement = self.self_evaluate_turns(messages)
+            self_judgement_content = self._parse_judgement(self_judgement['message']['content'])
+
+            if self.model == self.judge_model:
+                self.client.unload(self.model)
 
         t0 = time.time()
         judgements = self.evaluate_turns(messages)
@@ -179,8 +239,10 @@ class Tester(BaseTester):
             for j in judgements
         ]
         result = {
+            'ollama_version': self.client.get_version(),
             'messages': messages,
             'judgements': judgements_content,
+            'self_judgement': self_judgement_content,
             'message_duration': message_duration,
             'judge_duration': judge_duration,
             'work_duration': message_duration + judge_duration,
