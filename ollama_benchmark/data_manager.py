@@ -8,7 +8,8 @@ from ollama_benchmark import settings
 from ollama_benchmark import questions
 from ollama_benchmark import errors
 
-MLBENCH_URL = 'https://raw.githubusercontent.com/lm-sys/FastChat/main/fastchat/llm_judge/data/mt_bench/question.jsonl'
+MTBENCH_URL = 'https://raw.githubusercontent.com/lm-sys/FastChat/main/fastchat/llm_judge/data/mt_bench/question.jsonl'
+MTBENCH_FR_URL = "hf://datasets/bofenghuang/mt-bench-french/question.jsonl"
 ODISSEY_MATH_URL = 'https://github.com/protagolabs/odyssey-math/raw/main/final-odyssey-math-with-levels.jsonl'
 CODEULTRAFEEDBACK_URL = 'hf://datasets/coseal/CodeUltraFeedback/data/train-00000-of-00001.parquet'
 CHC_BENCH_BASE_URL = "hf://datasets/m-a-p/CHC-Bench/"
@@ -35,10 +36,10 @@ CHC_BENCH_CATEGORIES = {
 
 read_parquet = None
 try:
-    from pandas import read_parquet
+    from pandas import read_parquet, read_json
 except ImportError:
     try:
-        from polars import read_parquet
+        from polars import read_parquet, read_json
     except ImportError:
         pass
 
@@ -52,29 +53,34 @@ class DataManager:
         df = read_parquet(url)
         df.to_pickle(filename)
 
-    @property
-    def mlbench_file_name(self):
-        if not hasattr(self, '_mlbench_file_name'):
-            self._mlbench_file_name = os.path.join(self.data_dir, 'mlbench.jsonl')
-        return self._mlbench_file_name
+    def _download_jsonl(self, url, filename):
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        df = read_json(url, lines=True)
+        df.to_pickle(filename)
 
-    def download_mlbench(self):
-        os.makedirs(os.path.dirname(self.mlbench_file_name), exist_ok=True)
-        urllib.request.urlretrieve(MLBENCH_URL, self.mlbench_file_name)
+    @property
+    def mtbench_file_name(self):
+        if not hasattr(self, '_mtbench_file_name'):
+            self._mtbench_file_name = os.path.join(self.data_dir, 'mtbench.jsonl')
+        return self._mtbench_file_name
+
+    def download_mtbench(self):
+        os.makedirs(os.path.dirname(self.mtbench_file_name), exist_ok=True)
+        urllib.request.urlretrieve(MTBENCH_URL, self.mtbench_file_name)
 
     @property
     def mb_questions(self):
         if not hasattr(self, '_mb_questions'):
             self._mb_questions = []
             try:
-                fd = open(self.mlbench_file_name, 'r')
+                fd = open(self.mtbench_file_name, 'r')
             except FileNotFoundError:
-                self.download_mlbench()
-                fd = open(self.mlbench_file_name, 'r')
+                self.download_mtbench()
+                fd = open(self.mtbench_file_name, 'r')
             for line in fd:
                 data = json.loads(line)
                 data.update({
-                    'source': 'mlbench',
+                    'source': 'mtbench',
                     'language': 'en',
                 })
                 self._mb_questions.append(data)
@@ -183,6 +189,41 @@ class DataManager:
         return self._chc_questions
 
     @property
+    def mlbench_fr_file_name(self):
+        if not hasattr(self, '_mlbench_fr_file_name'):
+            self._mlbench_fr_file_name = os.path.join(self.data_dir, 'mlbench_fr.jsonl')
+        return self._mlbench_fr_file_name
+
+    def download_mlbench_fr(self):
+        self._download_jsonl(
+            MTBENCH_FR_URL,
+            self.mlbench_fr_file_name,
+        )
+
+    @property
+    def mb_fr_questions(self):
+        if not hasattr(self, '_mb_fr_questions'):
+            self._mb_fr_questions = []
+            filename = self.mlbench_fr_file_name
+            try:
+                fd = open(filename, 'rb')
+                df = pickle.load(fd)
+            except FileNotFoundError:
+                self.download_mlbench_fr()
+                fd = open(filename, 'rb')
+                df = pickle.load(fd)
+            for row in df.iloc:
+                data = {
+                    'question_id': f"mb_fr_{row.question_id}",
+                    'turns': row.turns,
+                    'category': 'writing',
+                    'source': 'mlbench_fr',
+                    'language': 'fr',
+                }
+                self._mb_fr_questions.append(data)
+        return self._mb_fr_questions
+
+    @property
     def cm_questions(self):
         qs = questions.IMAGE_QUESTIONS[::]
         for question in qs:
@@ -201,6 +242,7 @@ class DataManager:
             self._questions += self.cm_questions
             self._questions += self.om_questions
             if read_parquet is not None:
+                self._questions += self.mb_fr_questions
                 self._questions += self.cud_questions
                 self._questions += self.chc_questions
         return self._questions
