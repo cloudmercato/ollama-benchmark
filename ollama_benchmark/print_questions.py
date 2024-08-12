@@ -21,30 +21,29 @@ def make_args(subparsers):
     )
 
 
-
 TEMPLATES = {
     0: (
         "   ID | Category | # Turns",
         "{question_id:5} | {category:^8} | {num_turns:3}"
     ),
     1: (
-        "   ID | Category | # Turns | Source",
-        "{question_id:5} | {category:^8} | {num_turns:3} | {source}"
+        "   ID | Category | # Turns | Lang | Source",
+        "{question_id:5} | {category:^8} | {num_turns:7} | {language:4} | {source}"
     ),
     2: (
-        "   ID | Category | # Turns | Source | Turns",
-        "{question_id:5} | {category:^8} | {num_turns:3} | {source} | {turns}"
+        "   ID | Category | # Turns | Lang | Source             | Turns",
+        "{question_id:5} | {category:^8} | {num_turns:7} | {language:4} | {source:18} | {turns}"
     ),
 }
 
 
 def list_categories():
-    template = "{category:9} | {count:6}"
+    template = "{category:10} | {count:6}"
 
     questions = utils.data_manager.list_questions()
     questions_categories = [q['category'] for q in questions]
     categories = sorted(set(questions_categories))
-    print("Category | Count")
+    print("Category   | Count")
     for category in categories:
         count = len([c for c in questions_categories if c == category])
         row = template.format(category=category, count=count)
@@ -52,12 +51,12 @@ def list_categories():
 
 
 def list_sources():
-    template = "{source:15} | {count}"
+    template = "{source:18} | {count}"
 
     questions = utils.data_manager.list_questions()
     questions_sources = [q['source'] for q in questions]
     sources = sorted(set(questions_sources))
-    print("Source          | Count")
+    print("Source             | Count")
     for source in sources:
         count = len([c for c in questions_sources if c == source])
         row = template.format(source=source, count=count)

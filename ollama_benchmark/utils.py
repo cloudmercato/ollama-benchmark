@@ -6,6 +6,16 @@ from base64 import b64encode
 import urllib.request
 import math
 import statistics
+import pickle
+
+read_parquet = None
+try:
+    from pandas import read_parquet
+except ImportError:
+    try:
+        from polars import read_parquet
+    except ImportError:
+        pass
 
 from ollama_benchmark import __version__
 from ollama_benchmark import settings
@@ -13,6 +23,7 @@ from ollama_benchmark import questions
 
 MLBENCH_URL = 'https://raw.githubusercontent.com/lm-sys/FastChat/main/fastchat/llm_judge/data/mt_bench/question.jsonl'
 ODISSEY_MATH_URL = 'https://github.com/protagolabs/odyssey-math/raw/main/final-odyssey-math-with-levels.jsonl'
+CODEULTRAFEEDBACK_URL = 'hf://datasets/coseal/CodeUltraFeedback/data/train-00000-of-00001.parquet'
 
 
 def print_main():
@@ -48,7 +59,10 @@ class DataManager:
                 fd = open(self.mlbench_file_name, 'r')
             for line in fd:
                 data = json.loads(line)
-                data['source'] = 'mlbench'
+                data.update({
+                    'source': 'mlbench',
+                    'language': 'en',
+                })
                 self._mlbench_questions.append(data)
             fd.close()
         return self._mlbench_questions
@@ -80,15 +94,53 @@ class DataManager:
                         'turns': [problem['question']],
                         'category': 'math',
                         'source': 'odyssey-math',
+                        'language': 'en',
                     })
             fd.close()
         return self._odyssey_math_questions
 
     @property
+    def codeultrafeedback_file_name(self):
+        if not hasattr(self, '_codeultrafeedback_file_name'):
+            self._codeultrafeedback_file_name = os.path.join(self.data_dir, 'codeultrafeedback.pkl')
+        return self._codeultrafeedback_file_name
+
+    def download_codeultrafeedback(self):
+        os.makedirs(os.path.dirname(self.codeultrafeedback_file_name), exist_ok=True)
+        df = read_parquet(CODEULTRAFEEDBACK_URL)
+        df.to_pickle(self.codeultrafeedback_file_name)
+
+    @property
+    def codeultrafeedback_questions(self):
+        if not hasattr(self, '_codeultrafeedback_questions'):
+            self._codeultrafeedback_questions = []
+            try:
+                fd = open(self.codeultrafeedback_file_name, 'rb')
+            except FileNotFoundError:
+                self.download_codeultrafeedback()
+                fd = open(self.codeultrafeedback_file_name, 'rb')
+            df = pickle.load(fd)
+            for row in df.iloc:
+                data = {
+                    'question_id': f"cuf_{row.name}",
+                    'turns': [row.instruction],
+                    'category': 'coding',
+                    'source': 'codeultrafeedback',
+                    'language': 'en',
+                }
+                self._codeultrafeedback_questions.append(data)
+            fd.close()
+        return self._codeultrafeedback_questions
+
+    @property
     def image_questions(self):
         qs = questions.IMAGE_QUESTIONS[::]
         for question in qs:
-            question['source'] = 'cloud-mercato'
+            question.setdefault('language', 'en')
+            question.update({
+                'category': 'vision',
+                'source': 'cloud-mercato',
+            })
         return qs
 
     @property
@@ -98,6 +150,8 @@ class DataManager:
             self._questions += self.mlbench_questions
             self._questions += self.image_questions
             self._questions += self.odyssey_math_questions
+            if read_parquet is not None:
+                self._questions += self.codeultrafeedback_questions
         return self._questions
 
     def list_questions(self):
