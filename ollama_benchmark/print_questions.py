@@ -19,6 +19,12 @@ def make_args(subparsers):
     parser.add_argument(
         '--filter-sources', nargs='*', dest="sources"
     )
+    parser.add_argument(
+        '--list-langs', action="store_true",
+    )
+    parser.add_argument(
+        '--filter-langs', nargs='*', dest="langs"
+    )
 
 
 TEMPLATES = {
@@ -37,10 +43,9 @@ TEMPLATES = {
 }
 
 
-def list_categories():
+def list_categories(questions):
     template = "{category:10} | {count:6}"
 
-    questions = utils.data_manager.list_questions()
     questions_categories = [q['category'] for q in questions]
     categories = sorted(set(questions_categories))
     print("Category   | Count")
@@ -50,10 +55,9 @@ def list_categories():
         print(row)
 
 
-def list_sources():
+def list_sources(questions):
     template = "{source:18} | {count}"
 
-    questions = utils.data_manager.list_questions()
     questions_sources = [q['source'] for q in questions]
     sources = sorted(set(questions_sources))
     print("Source             | Count")
@@ -63,22 +67,39 @@ def list_sources():
         print(row)
 
 
+def list_langs(questions):
+    template = "{lang:4} | {count}"
+
+    questions_langs = [q['language'] for q in questions]
+    langs = sorted(set(questions_langs))
+    print("Lang | Count")
+    for lang in langs:
+        count = len([c for c in questions_langs if c == lang])
+        row = template.format(lang=lang, count=count)
+        print(row)
+
+
 def main(args):
+    questions = utils.data_manager.list_questions()
     if args.list_categories:
-        list_categories()
+        list_categories(questions)
         exit(0)
     if args.list_sources:
-        list_sources()
+        list_sources(questions)
+        exit(0)
+    if args.list_langs:
+        list_langs(questions)
         exit(0)
 
     header, body_template = TEMPLATES[args.verbosity]
     print(header)
 
-    questions = utils.data_manager.list_questions()
     for question in questions:
         if args.categories and question['category'] not in args.categories:
             continue
         if args.sources and question['source'] not in args.sources:
+            continue
+        if args.langs and question['language'] not in args.langs:
             continue
         row = body_template.format(
             num_turns=len(question['turns']),

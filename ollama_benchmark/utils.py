@@ -1,29 +1,12 @@
-import os
 import datetime
 import json
 import builtins
-from base64 import b64encode
-import urllib.request
 import math
 import statistics
-import pickle
-
-read_parquet = None
-try:
-    from pandas import read_parquet
-except ImportError:
-    try:
-        from polars import read_parquet
-    except ImportError:
-        pass
 
 from ollama_benchmark import __version__
 from ollama_benchmark import settings
-from ollama_benchmark import questions
-
-MLBENCH_URL = 'https://raw.githubusercontent.com/lm-sys/FastChat/main/fastchat/llm_judge/data/mt_bench/question.jsonl'
-ODISSEY_MATH_URL = 'https://github.com/protagolabs/odyssey-math/raw/main/final-odyssey-math-with-levels.jsonl'
-CODEULTRAFEEDBACK_URL = 'hf://datasets/coseal/CodeUltraFeedback/data/train-00000-of-00001.parquet'
+from ollama_benchmark.data_manager import DataManager
 
 
 def print_main():
@@ -32,154 +15,6 @@ def print_main():
     }
     for key, value in data.items():
         print(f"{key}: {value}")
-
-
-class DataManager:
-    def __init__(self, data_dir=settings.DATA_DIR):
-        self.data_dir = data_dir
-
-    @property
-    def mlbench_file_name(self):
-        if not hasattr(self, '_mlbench_file_name'):
-            self._mlbench_file_name = os.path.join(self.data_dir, 'mlbench.jsonl')
-        return self._mlbench_file_name
-
-    def download_mlbench(self):
-        os.makedirs(os.path.dirname(self.mlbench_file_name), exist_ok=True)
-        urllib.request.urlretrieve(MLBENCH_URL, self.mlbench_file_name)
-
-    @property
-    def mlbench_questions(self):
-        if not hasattr(self, '_mlbench_questions'):
-            self._mlbench_questions = []
-            try:
-                fd = open(self.mlbench_file_name, 'r')
-            except FileNotFoundError:
-                self.download_mlbench()
-                fd = open(self.mlbench_file_name, 'r')
-            for line in fd:
-                data = json.loads(line)
-                data.update({
-                    'source': 'mlbench',
-                    'language': 'en',
-                })
-                self._mlbench_questions.append(data)
-            fd.close()
-        return self._mlbench_questions
-
-    @property
-    def odyssey_math_file_name(self):
-        if not hasattr(self, '_odyssey_math_file_name'):
-            self._odyssey_math_file_name = os.path.join(self.data_dir, 'math_odyssey.jsonl')
-        return self._odyssey_math_file_name
-
-    def download_odyssey_math(self):
-        os.makedirs(os.path.dirname(self.odyssey_math_file_name), exist_ok=True)
-        urllib.request.urlretrieve(ODISSEY_MATH_URL, self.odyssey_math_file_name)
-
-    @property
-    def odyssey_math_questions(self):
-        if not hasattr(self, '_odyssey_math_questions'):
-            self._odyssey_math_questions = []
-            try:
-                fd = open(self.odyssey_math_file_name, 'r')
-            except FileNotFoundError:
-                self.download_odyssey_math()
-                fd = open(self.odyssey_math_file_name, 'r')
-            for line in fd:
-                data = json.loads(line)
-                for key, problem in data.items():
-                    self._odyssey_math_questions.append({
-                        'question_id': f"om_{key}".lower(),
-                        'turns': [problem['question']],
-                        'category': 'math',
-                        'source': 'odyssey-math',
-                        'language': 'en',
-                    })
-            fd.close()
-        return self._odyssey_math_questions
-
-    @property
-    def codeultrafeedback_file_name(self):
-        if not hasattr(self, '_codeultrafeedback_file_name'):
-            self._codeultrafeedback_file_name = os.path.join(self.data_dir, 'codeultrafeedback.pkl')
-        return self._codeultrafeedback_file_name
-
-    def download_codeultrafeedback(self):
-        os.makedirs(os.path.dirname(self.codeultrafeedback_file_name), exist_ok=True)
-        df = read_parquet(CODEULTRAFEEDBACK_URL)
-        df.to_pickle(self.codeultrafeedback_file_name)
-
-    @property
-    def codeultrafeedback_questions(self):
-        if not hasattr(self, '_codeultrafeedback_questions'):
-            self._codeultrafeedback_questions = []
-            try:
-                fd = open(self.codeultrafeedback_file_name, 'rb')
-            except FileNotFoundError:
-                self.download_codeultrafeedback()
-                fd = open(self.codeultrafeedback_file_name, 'rb')
-            df = pickle.load(fd)
-            for row in df.iloc:
-                data = {
-                    'question_id': f"cuf_{row.name}",
-                    'turns': [row.instruction],
-                    'category': 'coding',
-                    'source': 'codeultrafeedback',
-                    'language': 'en',
-                }
-                self._codeultrafeedback_questions.append(data)
-            fd.close()
-        return self._codeultrafeedback_questions
-
-    @property
-    def image_questions(self):
-        qs = questions.IMAGE_QUESTIONS[::]
-        for question in qs:
-            question.setdefault('language', 'en')
-            question.update({
-                'category': 'vision',
-                'source': 'cloud-mercato',
-            })
-        return qs
-
-    @property
-    def questions(self):
-        if not hasattr(self, '_questions'):
-            self._questions = []
-            self._questions += self.mlbench_questions
-            self._questions += self.image_questions
-            self._questions += self.odyssey_math_questions
-            if read_parquet is not None:
-                self._questions += self.codeultrafeedback_questions
-        return self._questions
-
-    def list_questions(self):
-        return self.questions
-
-    def get_question(self, id_):
-        for question in self.questions:
-            if str(question['question_id']) == str(id_):
-                return question
-        msg = "Question '%s' does not exist." % id_
-        raise Exception(msg)
-
-    def get_question_b64_images(self, id_):
-        question = self.get_question(id_)
-        b64s = []
-        for i, url in enumerate(question['image_urls']):
-            filename = '{}-{}.{}'.format(i, id_, url.split('.')[-1])
-            full_filename = os.path.join(self.data_dir, filename)
-            try:
-                fd = open(full_filename, 'rb')
-            except FileNotFoundError:
-                os.makedirs(os.path.dirname(full_filename), exist_ok=True)
-                urllib.request.urlretrieve(url, full_filename)
-                fd = open(full_filename, 'rb')
-            content = fd.read()
-            fd.close()
-            b64s.append(b64encode(content))
-        return b64s
 
 
 data_manager = DataManager()

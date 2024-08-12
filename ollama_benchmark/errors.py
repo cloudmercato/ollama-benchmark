@@ -24,3 +24,7 @@ class OllamaModelDoesNotExistError(ClientError):
 
 class OllamaTimeoutError(ClientError):
     pass
+
+
+class QuestionDoesNotExist(OllamaBenchmarkError):
+    pass
