@@ -11,7 +11,8 @@ from ollama_benchmark import __version__
 from ollama_benchmark import settings
 from ollama_benchmark import questions
 
-QUESTION_URL = 'https://raw.githubusercontent.com/lm-sys/FastChat/main/fastchat/llm_judge/data/mt_bench/question.jsonl'
+MLBENCH_URL = 'https://raw.githubusercontent.com/lm-sys/FastChat/main/fastchat/llm_judge/data/mt_bench/question.jsonl'
+ODISSEY_MATH_URL = 'https://github.com/protagolabs/odyssey-math/raw/main/final-odyssey-math-with-levels.jsonl'
 
 
 def print_main():
@@ -27,39 +28,76 @@ class DataManager:
         self.data_dir = data_dir
 
     @property
-    def question_file_name(self):
-        if not hasattr(self, '_question_file_name'):
-            self._question_file_name = os.path.join(self.data_dir, 'question.jsonl')
-        return self._question_file_name
+    def mlbench_file_name(self):
+        if not hasattr(self, '_mlbench_file_name'):
+            self._mlbench_file_name = os.path.join(self.data_dir, 'mlbench.jsonl')
+        return self._mlbench_file_name
 
-    def download_questions(self):
-        os.makedirs(os.path.dirname(self.question_file_name), exist_ok=True)
-        urllib.request.urlretrieve(QUESTION_URL, self.question_file_name)
+    def download_mlbench(self):
+        os.makedirs(os.path.dirname(self.mlbench_file_name), exist_ok=True)
+        urllib.request.urlretrieve(MLBENCH_URL, self.mlbench_file_name)
 
     @property
-    def simple_questions(self):
-        if not hasattr(self, '_simple_questions'):
-            self._simple_questions = []
+    def mlbench_questions(self):
+        if not hasattr(self, '_mlbench_questions'):
+            self._mlbench_questions = []
             try:
-                fd = open(self.question_file_name, 'r')
+                fd = open(self.mlbench_file_name, 'r')
             except FileNotFoundError:
-                self.download_questions()
-                fd = open(self.question_file_name, 'r')
+                self.download_mlbench()
+                fd = open(self.mlbench_file_name, 'r')
             for line in fd:
-                self._simple_questions.append(json.loads(line))
+                data = json.loads(line)
+                data['source'] = 'mlbench'
+                self._mlbench_questions.append(data)
             fd.close()
-        return self._simple_questions
+        return self._mlbench_questions
+
+    @property
+    def odyssey_math_file_name(self):
+        if not hasattr(self, '_odyssey_math_file_name'):
+            self._odyssey_math_file_name = os.path.join(self.data_dir, 'math_odyssey.jsonl')
+        return self._odyssey_math_file_name
+
+    def download_odyssey_math(self):
+        os.makedirs(os.path.dirname(self.odyssey_math_file_name), exist_ok=True)
+        urllib.request.urlretrieve(ODISSEY_MATH_URL, self.odyssey_math_file_name)
+
+    @property
+    def odyssey_math_questions(self):
+        if not hasattr(self, '_odyssey_math_questions'):
+            self._odyssey_math_questions = []
+            try:
+                fd = open(self.odyssey_math_file_name, 'r')
+            except FileNotFoundError:
+                self.download_odyssey_math()
+                fd = open(self.odyssey_math_file_name, 'r')
+            for line in fd:
+                data = json.loads(line)
+                for key, problem in data.items():
+                    self._odyssey_math_questions.append({
+                        'question_id': f"om_{key}".lower(),
+                        'turns': [problem['question']],
+                        'category': 'math',
+                        'source': 'odyssey-math',
+                    })
+            fd.close()
+        return self._odyssey_math_questions
 
     @property
     def image_questions(self):
-        return questions.IMAGE_QUESTIONS
+        qs = questions.IMAGE_QUESTIONS[::]
+        for question in qs:
+            question['source'] = 'cloud-mercato'
+        return qs
 
     @property
     def questions(self):
         if not hasattr(self, '_questions'):
             self._questions = []
-            self._questions += self.simple_questions
+            self._questions += self.mlbench_questions
             self._questions += self.image_questions
+            self._questions += self.odyssey_math_questions
         return self._questions
 
     def list_questions(self):

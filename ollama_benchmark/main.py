@@ -41,7 +41,7 @@ def main():
     parser.add_argument(
         '-q', '--quiet',
         action="store_true",
-        help="Completely disable any output (wip)",
+        help="Completly disable any output (wip)",
     )
 
     subparsers = parser.add_subparsers(dest="action")
