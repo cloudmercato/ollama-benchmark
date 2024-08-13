@@ -6,10 +6,12 @@ class Tester(BaseTester):
     def __init__(
         self,
         models,
+        post_unload=True,
         *args, **kwargs
     ):
         super().__init__(*args, **kwargs)
         self.models = models
+        self.post_unload = post_unload
 
     def get_tasks(self):
         for model in self.models:
@@ -39,10 +41,11 @@ class Tester(BaseTester):
             result["error"] = err
         result['duration'] = time.time() - t0
 
-        try:
-            self.client.unload(model)
-        except self.client.err_class as err:
-            self.logger.debug('Client error : %s', err.args[0])
-            result["error"] = err
+        if self.post_unload:
+            try:
+                self.client.unload(model)
+            except self.client.err_class as err:
+                self.logger.debug('Client error : %s', err.args[0])
+                result["error"] = err
 
         return result
