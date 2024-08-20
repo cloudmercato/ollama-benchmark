@@ -8,6 +8,7 @@ from ollama_benchmark.speed import main as speed
 from ollama_benchmark.load import main as load
 from ollama_benchmark.judge import main as judge
 from ollama_benchmark.embedding import main as embedding
+from ollama_benchmark.hack import main as hack
 from ollama_benchmark import chat
 from ollama_benchmark import pull_models
 from ollama_benchmark import unload_models
@@ -22,6 +23,7 @@ ACTIONS = {
     'unload_models': unload_models.main,
     'judge': judge.main,
     'questions': print_questions.main,
+    'hack': hack.main,
 }
 
 
@@ -53,6 +55,7 @@ def main():
     judge.make_args(subparsers)
     pull_models.make_args(subparsers)
     unload_models.make_args(subparsers)
+    hack.make_args(subparsers)
     print_questions.make_args(subparsers)
 
     args = parser.parse_args()
