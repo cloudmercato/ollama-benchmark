@@ -11,6 +11,7 @@ def make_args(subparsers):
     parser = subparsers.add_parser("load", help="Evaluate model loading speed")
     parser.add_argument('--max-workers', default=1, type=int)
     parser.add_argument('models', nargs='*')
+    parser.add_argument('--do-not-post-unload', action='store_false', dest='post_unload')
     utils.add_tester_arguments(parser)
 
 
@@ -62,6 +63,7 @@ def main(args):
         prewarm=False,
         max_workers=args.max_workers,
         models=args.models,
+        post_unload=args.post_unload,
     )
     run_results = tester.run_suite()
 

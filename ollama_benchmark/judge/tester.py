@@ -96,6 +96,11 @@ class Tester(BaseTester):
             msg = "No loaded messages"
             raise errors.ConfigurationError(msg)
 
+    def pull_model(self):
+        self.client.pull_model(self.model)
+        if self.model != self.judge_model:
+            self.client.pull_model(self.judge_model)
+
     def get_tasks(self):
         return [self.question]
 

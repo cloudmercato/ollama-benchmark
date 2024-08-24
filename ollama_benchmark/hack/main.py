@@ -29,12 +29,16 @@ def print_results(args, results, ollama_options):
     for key, value in ollama_options.items():
         print(f"{key}: {value}")
 
+    score = 0
     skipped = ('hack_id', 'ollama_version')
     for result in results:
+        score += int(result['ok'])
         for key, value in result.items():
             if key in skipped:
                 continue
             print(f"{result['hack_id']};{key}: {value}")
+    print(f"hack_nums: {len(results)}")
+    print(f"score: {score}")
 
 
 def main(args):

@@ -33,6 +33,14 @@ CHC_BENCH_CATEGORIES = {
     '阅读理解': 'extraction',
     '难题集萃': 'reasoning',
 }
+SOURCE_PREFIXES = {
+    'chc_bench': 'chc',
+    'cloud-mercato': 'cm',
+    'codeultrafeedback': 'cuf',
+    'mlbench_fr': 'mb_fr',
+    'mtbench': 'mb',
+    'odyssey-math': 'om',
+}
 
 read_parquet = None
 try:
@@ -43,8 +51,16 @@ except ImportError:
     except ImportError:
         pass
 
+load_dataset = None
+try:
+    from datasets import load_dataset
+except ImportError:
+    pass
+
 
 class DataManager:
+    SOURCE_PREFIXES = SOURCE_PREFIXES
+
     def __init__(self, data_dir=settings.DATA_DIR):
         self.data_dir = data_dir
 
@@ -216,7 +232,7 @@ class DataManager:
                 data = {
                     'question_id': f"mb_fr_{row.question_id}",
                     'turns': row.turns,
-                    'category': 'writing',
+                    'category': row.category,
                     'source': 'mlbench_fr',
                     'language': 'fr',
                 }
@@ -247,8 +263,34 @@ class DataManager:
                 self._questions += self.chc_questions
         return self._questions
 
-    def list_questions(self):
-        return self.questions
+    def list_questions(self, sources=None, categories=None, langs=None):
+        questions = []
+        if sources:
+            for source in sources:
+                if source in self.SOURCE_PREFIXES:
+                    prefix = self.SOURCE_PREFIXES[source]
+                else:
+                    ids = {v: k for k, v in self.SOURCE_PREFIXES.items()}
+                    if source in ids:
+                        prefix = source
+                    else:
+                        continue
+                attr_name = f"{prefix}_questions"
+                questions += getattr(self, attr_name)
+        else:
+            questions = self.questions
+
+        if categories:
+            questions = [
+                q for q in questions
+                if q['category'] in categories
+            ]
+        if langs:
+            questions = [
+                q for q in questions
+                if q['language'] in langs
+            ]
+        return questions
 
     def get_question(self, id_):
         prefix = id_.split('_', 1)[0]

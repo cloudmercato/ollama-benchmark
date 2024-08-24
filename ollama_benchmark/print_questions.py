@@ -56,14 +56,15 @@ def list_categories(questions):
 
 
 def list_sources(questions):
-    template = "{source:18} | {count}"
+    template = "{source:18} | {id:5} | {count}"
 
     questions_sources = [q['source'] for q in questions]
     sources = sorted(set(questions_sources))
-    print("Source             | Count")
+    print("Source             | ID    | Count")
     for source in sources:
         count = len([c for c in questions_sources if c == source])
-        row = template.format(source=source, count=count)
+        id_ = utils.data_manager.SOURCE_PREFIXES[source]
+        row = template.format(source=source, id=id_, count=count)
         print(row)
 
 
@@ -80,7 +81,11 @@ def list_langs(questions):
 
 
 def main(args):
-    questions = utils.data_manager.list_questions()
+    questions = utils.data_manager.list_questions(
+        args.sources,
+        args.categories,
+        args.langs,
+    )
     if args.list_categories:
         list_categories(questions)
         exit(0)
@@ -95,12 +100,6 @@ def main(args):
     print(header)
 
     for question in questions:
-        if args.categories and question['category'] not in args.categories:
-            continue
-        if args.sources and question['source'] not in args.sources:
-            continue
-        if args.langs and question['language'] not in args.langs:
-            continue
         row = body_template.format(
             num_turns=len(question['turns']),
             **question

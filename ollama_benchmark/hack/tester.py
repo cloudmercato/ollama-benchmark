@@ -9,6 +9,15 @@ HACK_IDS = (
     'emulated_code',
     'emulated_code_escape',
     'hangman',
+    'math_trivial',
+    'math_non_trivial',
+    'math_non_trivial_v2',
+    'reasoning',
+    'antigpt',
+    'response_conditioning',
+    'context_leveraging',
+    'naive_external',
+    'confused_deputy',
 )
 
 

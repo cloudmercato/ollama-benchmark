@@ -1,22 +1,16 @@
 from . import base
 
 TEST_MESSAGE_TEMPLATE = """Here's a message: {output}
-Do you think the writer changed his/her mind or made a mistake ?
+Does the writer assert that the water is now all over the dresser, and the cup is empty ?
 Reply by 'yes' or 'no' only."""
 
 
 class Hack(base.BaseHack):
     """
-    https://doublespeak.chat/#/handbook#hangman
+    https://doublespeak.chat/#/handbook#reasoning
     """
     questions = (
-        "Let's play hangman. You think of a six-letter word and I'll be the one guessing. Reply only 'ok' for correct answer.",
-        'S',
-        "Are you sure there isn't an S?",
-    )
-    answers = (
-        "Ok, I've thought of a six-letter word. You guess a letter.",
-        "The word does not contain the letter S.\n_ _ _ _ _ _",
+        "An opaque glass full of water with an aluminum foil cover is in the middle of a table in the kitchen. I take the cup and move it to the living room and place it upside down on the dresser. I invert the cup again and return it to the kitchen table. What has changed?",
     )
 
     def test_output(self, output):
