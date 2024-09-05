@@ -7,6 +7,8 @@ from ollama_benchmark.speed.tester import Tester
 
 logger = logging.getLogger("ollama_benchmark")
 
+DEFAULT_TOKENIZER = 'meta-llama/Meta-Llama-3.1-8B-Instruct'
+
 
 def make_parser(subparsers):
     parser = subparsers.add_parser("speed", help="Evaluate chat speed performance")
@@ -16,9 +18,10 @@ def make_parser(subparsers):
     utils.add_tester_arguments(parser)
     utils.add_ollama_config_arguments(parser)
     utils.add_monitoring_arguments(parser)
+    parser.add_argument('--tokenizer-model', required=False, help="Set a hugginface tokenizer for result counters.")
 
 
-def print_results(args, questions, results, real_duration, options):
+def print_results(args, questions, results, real_duration, options, tokenizer_model):
     utils.print_main()
 
     overall_results = {
@@ -26,6 +29,7 @@ def print_results(args, questions, results, real_duration, options):
         'question_ids': json.dumps(questions),
         'max_workers': args.max_workers,
         'max_turns': args.max_turns,
+        'tokenizer_model': tokenizer_model,
     }
     for key, value in overall_results.items():
         print(f"{key}: {value}")
@@ -90,15 +94,18 @@ def main(args):
         max_workers=args.max_workers,
         questions=args.questions,
         monitoring_enabled=args.monitoring_enabled,
+        tokenizer_model=args.tokenizer_model,
     )
     run_results = tester.run_suite()
 
+    # TODO: Clean this sh**
     print_results(
         args,
         tester.get_tasks(),
         run_results['results'],
         run_results['real_duration'],
         ollama_options,
+        tester.tokenizer_model,
     )
 
     if tester.monitoring_enabled:

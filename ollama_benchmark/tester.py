@@ -2,14 +2,18 @@ import time
 import logging
 import platform
 from concurrent.futures import ThreadPoolExecutor
+
 from ollama_benchmark import client
 from ollama_benchmark import errors
 
 try:
     from probes import ProbeManager
-    has_probes = True
 except ImportError:
-    has_probes = False
+    ProbeManager = None
+try:
+    from transformers import AutoTokenizer
+except ImportError:
+    AutoTokenizer = None
 
 
 class BaseTester:
@@ -25,6 +29,7 @@ class BaseTester:
         monitoring_enabled=True,
         monitoring_probers=None,
         monitoring_interval=5,
+        tokenizer_model=None,
     ):
         self.client = client.OllamaClient(
             host=host,
@@ -39,6 +44,7 @@ class BaseTester:
         self.monitoring_enabled = monitoring_enabled
         self.monitoring_probers = monitoring_probers
         self.monitoring_interval = monitoring_interval
+        self.tokenizer_model = tokenizer_model if AutoTokenizer else None
 
     def check_config(self):
         pass
@@ -47,6 +53,9 @@ class BaseTester:
         self.client.pull_model(self.model)
 
     def start_monitoring(self, probers, interval=5):
+        if ProbeManager is None:
+            self.monitoring_enabled = False
+            return
         if not probers:
             probers = [
                 'probes.probers.system.CpuProber',
@@ -65,7 +74,33 @@ class BaseTester:
         self.probe_manager.stop()
 
     def get_monitoring_results(self):
-        return self.probe_manager.get_results(),
+        return self.probe_manager.get_results()
+
+    def tokenize(self, messages):
+        # TODO: Use ollama when avai
+        if not self.tokenizer_model:
+            return
+        elif self.tokenizer_model and AutoTokenizer is None:
+            self.logger.warning("Cannot tokenize without `transformers`")
+            return
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_model)
+        except OSError as err:
+            raise errors.TokenizerError(err)
+        tokens = tokenizer.apply_chat_template(messages)
+        return tokens
+
+    def count_tokens(self, messages):
+        if not self.tokenizer_model:
+            return
+        tokens = self.tokenize(messages)
+        return len(tokens)
+
+    def setup(self):
+        pass
+
+    def tear_down(self):
+        pass
 
     def prewarm(self):
         try:
@@ -87,6 +122,8 @@ class BaseTester:
             self.pull_model()
         if self.prewarm_:
             self.prewarm()
+
+        self.setup()
 
         if self.monitoring_enabled:
             try:
@@ -116,6 +153,7 @@ class BaseTester:
             ]
             real_duration = (time.time() - t0)
 
+        self.tear_down()
         run_results = {
             'results': results,
             'real_duration': real_duration,

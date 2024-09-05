@@ -1,4 +1,5 @@
 from ollama_benchmark import utils
+from ollama_benchmark import errors
 from ollama_benchmark.tester import BaseTester
 
 
@@ -53,6 +54,15 @@ class Tester(BaseTester):
                 options=self.ollama_options,
             )
             self.logger.info('< %s', response['message']['content'])
+
+            if self.tokenizer_model:
+                try:
+                    response['prompt_eval_count'] = self.count_tokens(messages)
+                    response['eval_count'] = self.count_tokens([response['message']])
+                except errors.TokenizerError as err:
+                    self.logger.warning("Cannot tokenize: %s", err)
+                    self.tokenizer_model = None
+
             messages.append({
                 "role": "assistant",
                 "content": response['message']['content'],

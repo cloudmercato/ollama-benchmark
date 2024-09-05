@@ -28,3 +28,7 @@ class OllamaTimeoutError(ClientError):
 
 class QuestionDoesNotExist(OllamaBenchmarkError):
     pass
+
+
+class TokenizerError(OllamaBenchmarkError):
+    pass
