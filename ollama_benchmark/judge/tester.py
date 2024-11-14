@@ -205,6 +205,7 @@ class Tester(BaseTester):
             if ':' not in line or not line:
                 continue
             key, value = [i.strip() for i in line.split(':', 1)]
+            key = key.replace('\\', '')
             if not value:
                 continue
             if value[0].isdigit():
