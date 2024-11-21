@@ -245,15 +245,6 @@ class Tester(BaseTester):
             for j in judgements
         ]
 
-        # Capture messages to a JSON file
-        try:
-            file_name = f"messages_{question_id}.json"
-            with open(file_name, 'w', encoding='utf-8') as f:
-                json.dump(messages, f, ensure_ascii=False, indent=4)
-            self.logger.info(f"Messages saved to {file_name}")
-        except Exception as e:
-            self.logger.error(f"Failed to save messages: {e}")
-
         result = {
             'ollama_version': self.client.get_version(),
             'messages': messages,
@@ -263,4 +254,8 @@ class Tester(BaseTester):
             'judge_duration': judge_duration,
             'work_duration': message_duration + judge_duration,
         }
+
+        # Log result for debugging
+        self.logger.info(f"Final result : {json.dumps(result, indent=4)}")
+        
         return result
