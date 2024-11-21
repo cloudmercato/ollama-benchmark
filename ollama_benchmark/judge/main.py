@@ -173,6 +173,16 @@ def print_results(args, results, ollama_options, ollama_judge_options):
                 print(f"{i};self_evaluation: {judgement['evaluation']}")
             print(f"{i};self_feedback: {judgement.get('feedback')}")
 
+    # Include messages in output
+    print("\nJSON Output with messages:")
+    output = {
+        "overall_results": overall_results,
+        "ollama_options": ollama_options,
+        "ollama_judge_options": ollama_judge_options,
+        "results": results,
+    }
+    print(json.dumps(output, indent=4))
+
 
 def main(args):
     if args.show_judge_system_prompt:
