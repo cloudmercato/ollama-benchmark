@@ -1,6 +1,8 @@
 import json
 import time
+
 from ollama_benchmark import utils
+from ollama_benchmark import client
 from ollama_benchmark import errors
 from ollama_benchmark.tester import BaseTester
 
@@ -57,6 +59,7 @@ class Tester(BaseTester):
         self,
         judge_model,
         system_prompt=None,
+        judge_host=None,
         judge_system_prompt=None,
         judge_prompt=None,
         ollama_judge_options=None,
@@ -71,6 +74,15 @@ class Tester(BaseTester):
         self.ollama_judge_options = ollama_judge_options
         self.judge_system_prompt = judge_system_prompt or JUDGE_SYSTEM_PROMPT
         self.judge_prompt = judge_prompt or JUDGE_PROMPT
+        if judge_host:
+            self.judge_client = client.OllamaClient(
+                host=judge_host,
+                timeout=judge_timeout,
+            )
+            self.judge_host = judge_host
+        else:
+            self.judge_client = self.client
+            self.judge_host = self.ollama_host
         self.question = question
         self.max_turns = max_turns
         self.load_messages_file = load_messages
@@ -98,8 +110,7 @@ class Tester(BaseTester):
 
     def pull_model(self):
         self.client.pull_model(self.model)
-        if self.model != self.judge_model:
-            self.client.pull_model(self.judge_model)
+        self.judge_client.pull_model(self.judge_model)
 
     def get_tasks(self):
         return [self.question]
@@ -174,7 +185,7 @@ class Tester(BaseTester):
             }]
             self.logger.debug('judge system > %s', self.judge_system_prompt)
             self.logger.info('judge > %s', judge_prompt)
-            response = self.client.chat(
+            response = self.judge_client.chat(
                 model=self.judge_model,
                 messages=judge_messages,
                 options=self.ollama_judge_options,
@@ -233,7 +244,7 @@ class Tester(BaseTester):
             self_judgement = self.self_evaluate_turns(messages)
             self_judgement_content = self._parse_judgement(self_judgement['message']['content'])
 
-            if self.model == self.judge_model:
+            if self.ollama_host == self.judge_host:
                 self.client.unload(self.model)
 
         t0 = time.time()

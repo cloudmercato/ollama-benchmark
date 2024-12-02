@@ -31,11 +31,14 @@ class BaseTester:
         monitoring_interval=5,
         tokenizer_model=None,
     ):
+        self.logger = logging.getLogger("ollama_benchmark")
         self.client = client.OllamaClient(
             host=host,
             timeout=timeout,
         )
-        self.logger = logging.getLogger("ollama_benchmark")
+        self.ollama_host = host
+        self.ollama_timeout = timeout
+
         self.model = model
         self.max_workers = max_workers
         self.ollama_options = ollama_options or {}

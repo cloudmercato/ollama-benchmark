@@ -17,6 +17,7 @@ def make_args(subparsers):
         '--system-prompt', type=argparse.FileType('r'), required=False,
         help='Path to system prompt to use.'
     )
+    parser.add_argument('--judge-host', required=None)
     parser.add_argument('--judge-model', default=settings.JUDGE_MODEL)
     parser.add_argument('--question', default='81')
     parser.add_argument('--max_turns', default=None, type=int, required=False)
