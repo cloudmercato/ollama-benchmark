@@ -317,5 +317,5 @@ class DataManager:
                 fd = open(full_filename, 'rb')
             content = fd.read()
             fd.close()
-            b64s.append(b64encode(content))
+            b64s.append(b64encode(content).decode("utf-8"))
         return b64s
