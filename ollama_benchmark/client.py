@@ -51,7 +51,7 @@ class OllamaClient:
 
     @exception_checker
     def get_version(self):
-        response = self.client._request('GET', '/api/version')
+        response = self.client._client.get('/api/version')
         if response.status_code >= 300:
             raise errors.ClientError(response.status_code)
         return response.json()['version']
@@ -64,10 +64,8 @@ class OllamaClient:
 
     @exception_checker
     def list_running_models(self):
-        response = self.client._request('GET', '/api/ps')
-        if response.status_code >= 300:
-            raise errors.ClientError(response.status_code)
-        return response.json()['models']
+        response = self.client.ps()
+        return response.dict()['models']
 
     @exception_checker
     def load(self, model, keep_alive=None):
@@ -106,7 +104,7 @@ class OllamaClient:
 
     @exception_checker
     def embed(self, model, input_, options):
-        response = self.client._request('POST', '/api/embed', json={
+        response = self.client._client.post('/api/embed', json={
             'model': model,
             'input': input_,
             'options': options,

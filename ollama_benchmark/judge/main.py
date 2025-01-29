@@ -125,6 +125,8 @@ def print_results(args, results, ollama_options, ollama_judge_options):
             if key in skipped:
                 continue
             print(f"{key}: {value}")
+    messages = [r['messages'] for r in results]
+    print(f"messages: {json.dumps(messages)}")
     # Scores
     judgements = [
         judgement
