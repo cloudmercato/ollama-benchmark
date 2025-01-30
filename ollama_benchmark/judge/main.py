@@ -112,6 +112,15 @@ def print_results(args, results, ollama_options, ollama_judge_options):
         'question_id': args.question,
         'max_turns': args.max_turns,
     }
+
+    data_manager = utils.DataManager()
+    question = data_manager.get_question(args.question)
+    overall_results.update({
+        'question_category': question['category'],
+        'question_language': question['language'],
+        'question_source': question['source'],
+    })
+
     for key, value in overall_results.items():
         print(f"{key}: {value}")
     for key, value in ollama_options.items():
