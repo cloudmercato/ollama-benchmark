@@ -138,7 +138,7 @@ def add_ollama_config_arguments(parser):
         help='Tail free sampling is used to reduce the impact of less probable tokens from the output. (Default: 1)'
     )
     parser.add_argument(
-        '--num_predict', type=int, default=128,
+        '--num_predict', type=int, default=-1,
         help='Maximum number of tokens to predict when generating text. (Default: 128, -1 = infinite generation, -2 = fill context)'
     )
     parser.add_argument(
