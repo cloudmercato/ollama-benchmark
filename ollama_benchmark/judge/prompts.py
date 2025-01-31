@@ -29,54 +29,96 @@ Provide your feedback as a key:value text, easy for parsing, with no other text 
     total_rating:7/20
     evaluation:(your rationale for the rating, as a text)
     feedback:(How you think it could be improved)
+
+The assistant's message can contain tags such as `<think></think>` at the beginning. Consider it as comment for undersantd the rest of the message.
 """
 JUDGE_PROMPT = """
 Now here are the question and answer:
 
-Question: {question}
-Answer: {answer}
+# Start of question
+{question}
+# End of question
+# Start of answer
+{answer}
+# End of answer
 """
 RELEVANCE_PROMPT = """
 Up to 5 points can you rate only the relevance of the answer.
-Here are the question and answer:
+Here are the quetion and answer:
+Please give your evaluation in the following format:
+    relevance:1/5
 
-Question: {question}
-Answer: {answer}
+# Start of question
+{question}
+# End of question
+# Start of answer
+{answer}
+# End of answer
 """
 COHERENCE_PROMPT = """
 Up to 4 points can you rate only the coherence of the answer.
 Here are the question and answer:
+Please give your evaluation in the following format:
+    coherence:1/4
 
-Question: {question}
-Answer: {answer}
+# Start of question
+{question}
+# End of question
+# Start of answer
+{answer}
+# End of answer
 """
 QUALITY_PROMPT = """
 Up to 4 points can you rate only the quality of the answer.
 Here are the question and answer:
+Please give your evaluation in the following format:
+    quality:1/4
 
-Question: {question}
-Answer: {answer}
+# Start of question
+{question}
+# End of question
+# Start of answer
+{answer}
+# End of answer
 """
 LANGUAGE_PROMPT = """
 Up to 3 points can you rate only the language of the answer.
 Here are the question and answer:
+Please give your evaluation in the following format:
+    language:1/3
 
-Question: {question}
-Answer: {answer}
+# Start of question
+{question}
+# End of question
+# Start of answer
+{answer}
+# End of answer
 """
 ORIGINALITY_PROMPT = """
 Up to 2 points can you rate only the orignality of the answer.
 Here are the question and answer:
+Please give your evaluation in the following format:
+    originality:1/2
 
-Question: {question}
-Answer: {answer}
+# Start of question
+{question}
+# End of question
+# Start of answer
+{answer}
+# End of answer
 """
 NEUTRALITY_PROMPT = """
 Up to 2 points can you rate only the neutrality of the answer.
 Here are the question and answer:
+Please give your evaluation in the following format:
+    neutrality:1/2
 
-Question: {question}
-Answer: {answer}
+# Start of question
+{question}
+# End of question
+# Start of answer
+{answer}
+# End of answer
 """
 JUDGE_PROMPTS = {
     'relevance': RELEVANCE_PROMPT,
