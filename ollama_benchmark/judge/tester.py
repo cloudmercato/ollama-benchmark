@@ -5,53 +5,7 @@ from ollama_benchmark import utils
 from ollama_benchmark import client
 from ollama_benchmark import errors
 from ollama_benchmark.tester import BaseTester
-
-JUDGE_SYSTEM_PROMPT = """
-You will be given a user_question and system_answer couple.
-Your task is to provide a 'total rating' scoring how well the system_answer answers the user concerns expressed in the user_question.
-Give your answer on a scale of 0 to 20, where 0 means that the system_answer is not helpful at all, and 20 means that the system_answer completely and helpfully addresses the user_question.
-
-Here is an example of rating with comment:
-5: The system_answer is terrible: completely irrelevant to the question asked, or very partial
-8: The system_answer is mostly not helpful: misses some key aspects of the question
-12: The system_answer is mostly helpful: provides support, but still could be improved
-18: The system_answer is excellent: relevant, direct, detailed, and addresses all the concerns raised in the question
-
-Here's a methodology for rating:
-    - 5 points on relevance: Does the response directly and fully answer the question asked? Is it consistent with the context?
-    - 4 points on coherence: Is the response logical and coherent in itself? Are there no contradictions or absurdities?
-    - 4 points on quality of argumentation: Is the response supported by clear and relevant arguments? Does it use concrete examples?
-    - 3 points on language: Is the response expressed in clear, precise language appropriate to the context? Is the spelling, grammar or code syntax correct?
-    - 2 points on originality: Does the response bring an original point of view or a new perspective on the question?
-    - 2 points on neutrality: Is the response objective and neutral? Does it avoid personal biases or subjective opinions?
-For a total_rating of 20 points. Never gives more points than what described above.
-
-Provide your feedback as a key:value text, easy for parsing, with no other text than the output. Here's an example of output:
-
-    relevance:1/5
-    coherence:2/4
-    quality:3/4
-    language:1/3
-    originality:1/2
-    neutrality:1/2
-    total_rating:7/20
-    evaluation:(your rationale for the rating, as a text)
-    feedback:(How you think it could be improved)
-"""
-JUDGE_PROMPT = """
-Now here are the question and answer.
-
-Question: {question}
-Answer: {answer}
-"""
-SELF_ESTEEM_PROMPT = """
-From 0 to 20, how do you evaluate the quality of your answer ?
-
-Provide your feedback as a key:value text file just the result, no other text.Here's an example of output:
-
-    evaluation:(your rationale for the rating, as a text)
-    total_rating:5/20
-"""
+from ollama_benchmark.judge import prompts
 
 
 class Tester(BaseTester):
@@ -62,6 +16,7 @@ class Tester(BaseTester):
         judge_host=None,
         judge_system_prompt=None,
         judge_prompt=None,
+        quick_judge=False,
         ollama_judge_options=None,
         question=None,
         max_turns=1,
@@ -72,8 +27,9 @@ class Tester(BaseTester):
         self.judge_model = judge_model
         self.system_prompt = system_prompt
         self.ollama_judge_options = ollama_judge_options
-        self.judge_system_prompt = judge_system_prompt or JUDGE_SYSTEM_PROMPT
-        self.judge_prompt = judge_prompt or JUDGE_PROMPT
+        self.judge_system_prompt = judge_system_prompt or prompts.JUDGE_SYSTEM_PROMPT
+        self.judge_prompt = judge_prompt or prompts.JUDGE_PROMPT
+        self.quick_judge = quick_judge
         if judge_host:
             self.judge_client = client.OllamaClient(
                 host=judge_host,
@@ -163,7 +119,7 @@ class Tester(BaseTester):
             responses.append(response)
         return messages
 
-    def evaluate_turns(self, messages):
+    def quick_evaluate_turns(self, messages):
         judgements = []
         messages = messages[::]
         if messages and messages[0]['role'] == "system":
@@ -194,13 +150,48 @@ class Tester(BaseTester):
             judgements.append(response)
         return judgements
 
+    def evaluate_turns(self, messages):
+        judgements = []
+        orig_msgs = messages[::]
+        data = {}
+        for rate_type, judge_prompt_temp in prompts.JUDGE_PROMPTS.items():
+            messages = orig_msgs[::]
+            if messages and messages[0]['role'] == "system":
+                system = messages.pop(0)
+
+            while messages:
+                prompt = messages.pop(0)
+                answer = messages.pop(0)
+                judge_prompt = judge_prompt_temp.format(
+                    question=prompt['content'],
+                    answer=answer['content'],
+                )
+                judge_messages = [{
+                    "role": "system",
+                    "content": self.judge_system_prompt,
+                }, {
+                    "role": "user",
+                    "content": judge_prompt,
+                }]
+                self.logger.debug('judge system > %s', self.judge_system_prompt)
+                self.logger.info('judge > %s', judge_prompt)
+                response = self.judge_client.chat(
+                    model=self.judge_model,
+                    messages=judge_messages,
+                    options=self.ollama_judge_options,
+                )
+                self.logger.info('judge < %s', response['message']['content'])
+                data[rate_type] = response
+        judgements.append(data)
+        return judgements
+
     def self_evaluate_turns(self, messages):
         messages = messages[::]
         messages.append({
             "role": "user",
-            "content": SELF_ESTEEM_PROMPT,
+            "content": prompts.SELF_ESTEEM_PROMPT,
         })
-        self.logger.info('> %s', SELF_ESTEEM_PROMPT)
+        self.logger.info('> %s', prompts.SELF_ESTEEM_PROMPT)
         response = self.client.chat(
             model=self.model,
             messages=messages,
@@ -209,7 +200,7 @@ class Tester(BaseTester):
         self.logger.info('< %s', response['message']['content'])
         return response
 
-    def _parse_judgement(self, judgement):
+    def _parse_quick_judgement(self, judgement):
         data = {}
         for line in judgement.splitlines():
             line = line.strip()
@@ -231,6 +222,31 @@ class Tester(BaseTester):
         self.logger.info('Judgment values: %s', data)
         return data
 
+    def _parse_judgement(self, judgement):
+        data = {}
+        for category, response in judgement.items():
+            for line in response['message']['content'].splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                if not (line.startswith(category) and ':' in line):
+                    continue
+
+                key, value = [s.strip() for s in line.split(':', 1)]
+                key = key.replace('\\', '')
+                if not value:
+                    continue
+                if value[0].isdigit():
+                    value = float(value.split('/')[0].strip())
+                data[category] = value
+                break
+
+        values = list(data.values())
+        if len(values) < 6:
+            return {}
+        data['total_rating'] = sum(values)
+        return data
+
     def run(self, question_id):
         if self.load_messages:
             messages = self.load_messages[question_id]
@@ -242,19 +258,29 @@ class Tester(BaseTester):
             message_duration = time.time() - t0
 
             self_judgement = self.self_evaluate_turns(messages)
-            self_judgement_content = self._parse_judgement(self_judgement['message']['content'])
+            self_judgement_content = self._parse_quick_judgement(self_judgement['message']['content'])
 
             if self.ollama_host == self.judge_host:
                 self.client.unload(self.model)
 
         t0 = time.time()
-        judgements = self.evaluate_turns(messages)
-        judge_duration = time.time() - t0
+        if self.quick_judge:
+            judgements = self.quick_evaluate_turns(messages)
+            judge_duration = time.time() - t0
 
-        judgements_content = [
-            self._parse_judgement(j['message']['content'])
-            for j in judgements
-        ]
+            judgements_content = [
+                self._parse_quick_judgement(j['message']['content'])
+                for j in judgements
+            ]
+        else:
+            judgements = self.evaluate_turns(messages)
+            judge_duration = time.time() - t0
+
+            judgements_content = [
+                self._parse_judgement(j)
+                for j in judgements
+            ]
+
         result = {
             'ollama_version': self.client.get_version(),
             'messages': messages,
