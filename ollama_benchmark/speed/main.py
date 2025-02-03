@@ -92,6 +92,7 @@ def main(args):
         pull=args.pull,
         prewarm=args.prewarm,
         max_workers=args.max_workers,
+        max_turns=args.max_turns,
         questions=args.questions,
         monitoring_enabled=args.monitoring_enabled,
         tokenizer_model=args.tokenizer_model,
