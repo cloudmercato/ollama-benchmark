@@ -241,6 +241,7 @@ def main(args):
         prewarm=args.prewarm,
         max_workers=1,
         question=args.question,
+        max_turns=args.max_turns,
         quick_judge=args.quick_judge,
         judge_model=args.judge_model,
         judge_system_prompt=args.judge_system_prompt,
